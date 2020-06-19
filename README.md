@@ -33,7 +33,7 @@ Directories in this application:
 
 ## Data passed to templates
 
-### current_page
+### current_page
 
 The current page being processes, in page data format with the `content` field.
 
