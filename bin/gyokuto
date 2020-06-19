@@ -42,7 +42,7 @@ $allowed_options = [ 'debug', 'base_url', 'content_dir', 'template_dir', 'output
 //---------------------------------------------------------------------
 // Main code
 
-if (isset($commands[$argv[1]])) {
+if (!empty($argv[1]) && isset($commands[$argv[1]])) {
   // Compile any command-line options
   $options = [ ];
   $arg_string = [];
@@ -66,15 +66,31 @@ else {
   $help_string = array_reduce(
     array_keys($commands),
     function ($acc, $k) use ($commands) {
-      return sprintf("%s\n\n%s\n- %s", $acc, $k, $commands[$k]['help']);
+      return sprintf("  %s\n\n  %s\n    %s", $acc, $k, $commands[$k]['help']);
     },
     ''
   );
+  $option_string = implode(', ', $allowed_options);
   echo <<<HELP
 Syntax:
 
-  gyokuto <command>
+  gyokuto <command> <options>
 
 where <command> is one of$help_string
+
+and options is one of the following:
+
+  $option_string
+
+in the following format:
+
+  --option=value
+
+Set --debug=1 to turn debug mode on.
+
+Example:
+
+  gyokuto build --config_dir=~/Documents/my-site/config
+
 HELP;
 }
