@@ -130,6 +130,7 @@ class App {
     try {
       $this->prepareBuild();
       if ($this->performBuildOp()) {
+        $this->logIfDebug('Did not complete build on this run');
         return FALSE;
       }
       $this->outputBuild();
@@ -214,7 +215,7 @@ class App {
       }
       $this->addQueueItems($this->build['config']['queue_id'], $queue);
 
-      $this->log('Added required operations to queue');
+      $this->logIfDebug('Added required operations to queue');
 
       // Cache this build
       $this->saveCurrentBuild();
@@ -230,6 +231,7 @@ class App {
       }
       return FALSE;
     }
+    $this->logIfDebug(count($queue_buffer) . ' items loaded from build queue');
     $this->loadTwigEnvironment();
     foreach ($queue_buffer as $item) {
       list($op, $file) = $item;
@@ -257,11 +259,9 @@ class App {
           throw new \Exception(sprintf('Build operation %d not understood', $op));
       }
     }
+    $this->logIfDebug('Finished build run, saving current build and removing items');
     $this->saveCurrentBuild();
     $this->removeQueueItems($this->build['config']['queue_id'], count($queue_buffer));
-    if ($this->debug) {
-      $this->log('Finished build run');
-    }
     return TRUE;
   }
 
@@ -411,7 +411,7 @@ class App {
  * Index any metadata in a page as per config.
  */
   public function indexMetadata($page) {
-    if (empty($this->config['metadata_index'])) {
+    if (count($this->config['metadata_index']) == 0) {
       return;
     }
     foreach ($this->config['metadata_index'] as $name) {
@@ -441,8 +441,11 @@ class App {
       mkdir($build_file_dir, 0775, TRUE);
     }
 
+    $this->logIfDebug('Processing ' . $file . ' for build');
+
     // Decide what to do with the file
     if (static::fileIsMarkdown($file)) {
+      $this->logIfDebug('Building as markdown');
 //       $mp = new \Pagerange\Markdown\MetaParsedown();
       // Render markdown files
       $page_index = $this->getPageIdFromContentFile($file);
@@ -451,6 +454,7 @@ class App {
         $pages_to_build = [];
         // Is this paginated?
         if (isset($source_page['meta']['pagination'])) {
+          $this->logIfDebug('Processing as paginated');
           if ($source_page['meta']['pagination']['data'] == 'pages') {
             // For pagination on pages array, split build data up into multiple output pages.
             // Subset existing pages array to match what template wants
@@ -532,13 +536,15 @@ class App {
         // Loop through pages to build
         foreach ($pages_to_build as $page) {
           $build_file = $page['_build_file'];
+          $this->logIfDebug('Building page from ' . $page['_build_file']);
           unset($page['_build_file']);
           $page_params = [
             'current_page' => $page,
             'config' => &$this->config,
             'pages' => &$this->build['pages'],
           ];
-          // Render markdown content, using Twig filter first
+          // Render markdown content, using Twig content filter first
+          $this->logIfDebug('Rendering markdown with twig content filter');
           $page_params['current_page']['content'] =
             $this->twig->render(
               '_convert_twig_in_content.twig',
@@ -550,6 +556,7 @@ class App {
             )
           ;
           // Render page template and output
+          $this->logIfDebug('Rendering final markdown');
           $rendered_page = $this->twig->render(
             $page['meta']['template'],
             $page_params
@@ -607,6 +614,15 @@ class App {
     }
     else {
       var_dump($value);
+    }
+  }
+
+  /**
+   * Only log if debug is set
+   */
+  public function logIfDebug($value) {
+    if ($this->debug) {
+      $this->log($value);
     }
   }
 
