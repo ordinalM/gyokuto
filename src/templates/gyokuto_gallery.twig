@@ -1,0 +1,10 @@
+<div class="gyokuto-gallery">
+{% for image in gallery.images %}
+  <figure class="gyokuto-gallery-item">
+    {% if image.thumbnail is defined %}<a href="{{ image.src }}"><img src="{{ image.thumbnail.src }}" alt="{{ image.alt|e('html_attr') }}"/></a>{% else %}<img src="{{ image.src }}" alt="{{ image.alt|e('html_attr') }}" class="fslightbox"/>{% endif %}
+{% if image.caption is defined %}
+    <figcaption>{{ image.caption|e }}</figcaption>
+{% endif %}
+  </figure>
+{% endfor %}
+</div>
