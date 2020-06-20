@@ -291,9 +291,9 @@ class App {
   public function outputBuild() {
     // Output to output base
     if (file_exists($this->config['output_dir'])) {
-      $this->log('Removing old output dir ' . $this->config['output_dir']);
       if (is_dir($this->config['output_dir'])) {
         $this->deleteDir($this->config['output_dir']);
+        $this->log('Removed old output dir ' . $this->config['output_dir']);
       }
       else {
         throw new Exception($this->config['output_dir'] . ' is not a directory for some reason');
@@ -308,7 +308,7 @@ class App {
       $this->log('Finishing build...');
     }
     // Remove build dir if it wasn't moved (probably because of an exception)
-    if (file_exists($this->build['config']['dir'])) {
+    if (is_dir($this->build['config']['dir'])) {
       $this->log('Deleting build dir ' . $this->build['config']['dir']);
       $this->deleteDir($this->build['config']['dir']);
     }
@@ -629,16 +629,21 @@ class App {
   /**
    * Deletes an entire directory.
    */
-  public function deleteDir(string $dir) {
+  public function deleteDir(string $dir) : bool {
     foreach ($this->findAllFiles($dir, [ 'include_all' => TRUE ]) as $file) {
       if (is_dir($file)) {
-        rmdir($file);
+        if (!rmdir($file)) {
+          throw new \Exception('Could not delete dir ' . $file);
+        }
       }
-      else {
-        unlink($file);
+      elseif (!unlink($file)) {
+        throw new \Exception('Could not delete file ' . $file);
       }
     }
-    rmdir($dir);
+    if (!rmdir($dir)) {
+      throw new \Exception('Could not delete dir ' . $dir);
+    }
+    return TRUE;
   }
 
   /**
