@@ -4,14 +4,30 @@
  */
 namespace Gyokuto;
 
-require_once(__DIR__ . '/../vendor/autoload.php');
-error_reporting(E_ALL);
+//require_once(__DIR__ . '/../vendor/autoload.php');
+//error_reporting(E_ALL);
 
 use \Twig\Extra\Markdown\DefaultMarkdown;
 use \Twig\Extra\Markdown\MarkdownRuntime;
 use \Twig\RuntimeLoader\RuntimeLoaderInterface;
 
 class App {
+  /**
+   * @var mixed|string|bool
+   */
+  public $app_base;
+  /**
+   * @var int[]|mixed[][]|string[]|mixed
+   */
+  public $config;
+  /**
+   * @var mixed|\Twig\Environment
+   */
+  public $twig;
+  /**
+   * @var mixed|mixed[][]|int[][]|mixed[][][]|float[][]|string[][]
+   */
+  public $build;
   const BUILD_OP_PARSE = 0;
   const BUILD_OP_BUILD = 1;
   public $debug = FALSE;
@@ -335,7 +351,7 @@ class App {
     $dirname = rtrim($base_dir, '/') . '/';
     $content = array_diff(scandir($dirname), array('..', '.'));
     foreach ($content as $file) {
-      if ($options['include_all'] || !(in_array(basename($file), $this->config['exclude_files']) || $this->_checkFileVsExcludeRegex($file))) {
+      if ($options['include_all'] || !in_array(basename($file), $this->config['exclude_files']) && !$this->_checkFileVsExcludeRegex($file)) {
         $file = $dirname . $file;
         $add_this_file = TRUE;
         if (is_dir($file)) {
@@ -465,7 +481,7 @@ class App {
                 && empty($page['meta']['hidden']) // not hidden
                 && (
                   empty($source_page['meta']['index_options']['subpage_prefix'])
-                  || preg_match('|^' . preg_quote($source_page['meta']['index_options']['subpage_prefix']) . '|', $page['path'])
+                  || preg_match('|^' . preg_quote($source_page['meta']['index_options']['subpage_prefix'], '|') . '|', $page['path'])
                 ) // correct page path prefix
                 && (
                   empty($source_page['meta']['index_options']['templates'])
@@ -671,8 +687,7 @@ class App {
     foreach($files as $file) {
       $checksum .= $file . md5_file($file);
     }
-    $checksum = md5($checksum);
-    return $checksum;
+    return md5($checksum);
   }
 
   /**

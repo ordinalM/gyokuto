@@ -4,7 +4,7 @@
  * Command line wrapper for the Gyokuto application.
  */
 
-require_once(__DIR__ . '/../src/GyokutoApp.class.php');
+//require_once(__DIR__ . '/../src/GyokutoApp.class.php');
 
 //---------------------------------------------------------------------
 // Available commands and callbacks
