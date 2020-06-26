@@ -4,5 +4,8 @@
         "symfony/yaml": "^5.0",
         "twig/markdown-extra": "^3.0",
         "michelf/php-markdown": "^1.9"
+    },
+    "require-dev": {
+        "rector/rector": "^0.7.41"
     }
 }
