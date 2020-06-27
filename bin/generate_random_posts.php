@@ -4,8 +4,7 @@
  * Generates random blog posts.
  */
 
-$use_images = false;
-$use_internet = false;
+$use_images = true;
 
 $count = (int)$argv[1];
 if ($count <= 0) {
@@ -20,35 +19,27 @@ if (empty($dir)) {
     exit(0);
 }
 
-$word_count = 1000;
-$words = explode(
-    ' ',
-    preg_replace(
-        '/[^a-z0-9 ]+/',
-        '',
-        strtolower(
-            file_get_contents(
-                'http://www.randomtext.me/download/txt/gibberish/p-1/' . $word_count
-            )
-        )
-    )
-);
+require_once __DIR__ . '/../vendor/autoload.php';
 
-$all_tags = explode(' ', random_words(20));
+$faker = Faker\Factory::create();
+
+$all_tags = $faker->words(20);
 
 printf("Generating %d markdown files in %s\n", $count, $dir);
 
 while ($count-- > 0) {
-//   $title = trim(str_replace('.', '', file_get_contents('http://www.randomtext.me/download/txt/gibberish/p-1/1-4')));
-    $title = random_words(rand(2, 6));
-//   $body = trim(file_get_contents('http://www.randomtext.me/download/txt/gibberish/p-' . rand(4, 10) . '/20-60'));
-    $description = random_paragraphs(1);
-    $body = random_paragraphs(rand(5, 15));
+    $title = implode(' ', $faker->words(rand(1, 6)));
+    $description = $faker->paragraph();
+    $body = implode("\n\n", $faker->paragraphs(rand(5, 15)));
     if ($use_images) {
         $body = preg_split('/[\n\r]+/', $body);
         $images = rand(0, 5);
         while ($images-- > 0) {
-            $body[] = '<p>' . random_image_tag() . '</p>';
+            $body[] = sprintf(
+                '![%s](%s)',
+                $faker->sentence(),
+                $faker->imageUrl
+            );
             shuffle($body);
         }
         $body = implode("\n\n", $body);
@@ -60,7 +51,7 @@ while ($count-- > 0) {
     $timestamp = time() - rand(0, 31536000 * 5);
     $date = date('c', $timestamp);
     if ($use_images) {
-        $hero_image = 'hero_image: data:image/jpeg;base64,' . random_image_base64(800, 533);
+        $hero_image = 'hero_image: ' . $faker->imageUrl(800, 533);
     }
     $md = <<<MD
 ---
@@ -88,36 +79,4 @@ MD;
     }
     file_put_contents($filename, $md);
     echo "Generated $filename, $count left\n";
-}
-
-function random_image_base64($w = 300, $h = 200)
-{
-    $f = file_get_contents("https://picsum.photos/$w/$h");
-    return base64_encode($f);
-}
-
-function random_image_tag($w = 300, $h = 200)
-{
-    return sprintf('<img src="data:image/jpeg;base64,%s" />', htmlentities(random_image_base64($w, $h)));
-}
-
-function random_words($n)
-{
-    global $words, $word_count;
-    $this_words = [];
-    while ($n-- > 0) {
-        $this_words[] = $words[rand(0, $word_count - 1)];
-    }
-    return implode(' ', $this_words);
-}
-
-function random_paragraphs($n, $min = 20, $max = 100)
-{
-//  trim(file_get_contents('http://www.randomtext.me/download/txt/gibberish/p-1/10-20'));}
-    global $words, $word_count;
-    $this_paras = [];
-    while ($n-- > 0) {
-        $this_paras[] = random_words(rand($min, $max));
-    }
-    return implode("\n\n", $this_paras);
 }
