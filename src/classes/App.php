@@ -27,7 +27,7 @@ class App
             $this->debug = true;
         }
         // The root of the entire application should be this.
-        $this->app_base = realpath(__DIR__ . '/..');
+        $this->app_base = realpath(__DIR__ . '/../..');
 
         // Default configuration
         $this->config = array(
@@ -46,6 +46,7 @@ class App
         }
 
         // Read in and merge config files.
+        $this->config['config_dir'] = realpath($this->config['config_dir']);
         if (is_dir($this->config['config_dir'])) {
             $config_files = scandir($this->config['config_dir']);
             sort($config_files);
@@ -65,10 +66,10 @@ class App
         $default_folder = realpath($this->config['config_dir'] . '/..') . '/';
         foreach (
             [
-            'content_dir'             => 'content',
-            'template_dir'            => 'templates',
-            'output_dir'                => 'public_html',
-            'cache_dir'                 => 'cache',
+            'content_dir' => 'content',
+            'template_dir' => 'templates',
+            'output_dir' => 'public_html',
+            'cache_dir' => 'cache',
             ] as $item => $subfolder
         ) {
             if (!isset($this->config[$item])) {
@@ -181,12 +182,11 @@ class App
     public function prepareBuild()
     {
         if ($build = $this->loadCurrentBuild()) {
-            if ($this->debug) {
-                $this->log('Existing build found, loading and continuing');
-            }
+            $this->logIfDebug('Existing build found, loading and continuing');
             $this->build = $build;
         } else {
             $this->log('Starting new build at ' . date('c'));
+            $build_base_dir = $this->config['cache_dir'] . '/build';
             $this->build = [
                 'config' => [
                     'id' => uniqid('gbuild_'),
@@ -194,23 +194,29 @@ class App
                     'metadata_index' => [],
                     'parsed' => 0,
                     'built' => 0,
-                    'dir' => $this->config['cache_dir'] . '/build/public_html',
+                    'base_dir' => $build_base_dir,
+                    'output_dir' => $build_base_dir . '/public_html',
                     'queue_id' => 'build/data/queue',
                 ],
                 'pages' => [],
             ];
 
+            // Remove any existing base build dir
+            if (is_dir($this->build['config']['base_dir'])) {
+                $this->logIfDebug('Deleting existing base build dir');
+                $this->deleteDir($this->build['config']['base_dir']);
+            }
             // Create build dir
-            if (mkdir($this->build['config']['dir'], 0775, true)) {
-                $this->log('Created build base dir at ' . $this->build['config']['dir']);
+            if (mkdir($this->build['config']['output_dir'], 0775, true)) {
+                $this->log('Created build output dir at ' . $this->build['config']['output_dir']);
             } else {
-                throw new \Exception('Could not create build base dir at ' . $this->build['config']['dir']);
+                throw new \Exception('Could not create build output dir at ' . $this->build['config']['output_dir']);
             }
 
             // Collate content
             $content_files = array_map(
                 function ($file) {
-                    return $this->_stripContentDir($file);
+                    return $this->stripContentDir($file);
                 },
                 $this->findAllFiles($this->config['content_dir'])
             );
@@ -287,13 +293,16 @@ class App
     public function loadCurrentBuild()
     {
         $build_cache_dir = $this->config['cache_dir'] . '/build/data';
+        $this->logIfDebug('Checking for cached build data dir at ' . $build_cache_dir);
         if (!is_dir($build_cache_dir)) {
+            $this->logIfDebug('None found');
             return false;
         }
         $build = [];
         foreach (array_diff(scandir($this->config['cache_dir'] . '/build/data'), array('..', '.')) as $index) {
             $build[$index] = $this->cacheGet('build/data/' . $index);
         }
+        $this->logIfDebug('Existing build loaded');
         return empty($build) ? false : $build;
     }
 
@@ -326,11 +335,11 @@ class App
         $this->log(
             sprintf(
                 'Moving build dir %s to output dir %s',
-                $this->build['config']['dir'],
+                $this->build['config']['output_dir'],
                 $this->config['output_dir']
             )
         );
-        rename($this->build['config']['dir'], $this->config['output_dir']);
+        rename($this->build['config']['output_dir'], $this->config['output_dir']);
     }
 
     public function finishBuild()
@@ -339,9 +348,9 @@ class App
             $this->log('Finishing build...');
         }
         // Remove build dir if it wasn't moved (probably because of an exception)
-        if (is_dir($this->build['config']['dir'])) {
-            $this->log('Deleting build dir ' . $this->build['config']['dir']);
-            $this->deleteDir($this->build['config']['dir']);
+        if (is_dir($this->build['config']['output_dir'])) {
+            $this->log('Deleting build dir ' . $this->build['config']['output_dir']);
+            $this->deleteDir($this->build['config']['output_dir']);
         }
 
         // Output the exception if it interrupted build
@@ -370,7 +379,7 @@ class App
             if (
                 $options['include_all']
                 || !in_array(basename($file), $this->config['exclude_files'])
-                && !$this->_checkFileVsExcludeRegex($file)
+                && !$this->checkFileVsExcludeRegex($file)
             ) {
                 $file = $dirname . $file;
                 $add_this_file = true;
@@ -427,11 +436,11 @@ class App
         } else {
             $output_file = $this->config['content_dir'] . '/' . ltrim($page_meta['output_file'], '/');
         }
-        $path = $this->_stripContentDir($output_file);
+        $path = $this->stripContentDir($output_file);
         $page = array(
             'meta' => $page_meta,
             'original_path' => $this->config['base_url'] . $path,
-            '_build_file' => $output_file === false ? false : $this->_contentToBuildFile($output_file),
+            '_build_file' => $output_file === false ? false : $this->contentToBuildFile($output_file),
             'id' => $this->getPageIdFromContentFile($file),
         );
         $page['path'] = preg_replace('/\/index\.html$/', '', $page['original_path']);
@@ -475,7 +484,7 @@ class App
         $action = false;
 
         // Calculate build filename and create directories if necessary
-        $build_file = $this->_contentToBuildFile($file);
+        $build_file = $this->contentToBuildFile($file);
         $build_file_dir = dirname($build_file);
         if (!is_dir($build_file_dir)) {
             mkdir($build_file_dir, 0775, true);
@@ -650,7 +659,7 @@ class App
         return
             empty($action)
             ? ''
-            : sprintf("%s\t%s\t%f", $action, $this->_stripContentDir($file), microtime(true) - $start);
+            : sprintf("%s\t%s\t%f", $action, $this->stripContentDir($file), microtime(true) - $start);
     }
 
     public function stripContentDir(string $file)
@@ -660,7 +669,7 @@ class App
 
     public function contentToBuildFile(string $file)
     {
-        return str_replace($this->config['content_dir'], $this->build['config']['dir'], $file);
+        return str_replace($this->config['content_dir'], $this->build['config']['output_dir'], $file);
     }
 
     public static function fileIsMarkdown(string $file)
@@ -675,7 +684,7 @@ class App
 
     public function getPageIdFromContentFile(string $file)
     {
-        return trim($this->_stripContentDir(preg_replace('/(\.\w+?)$/', '', $file)), '/');
+        return trim($this->stripContentDir(preg_replace('/(\.\w+?)$/', '', $file)), '/');
     }
 
     /**
@@ -864,7 +873,7 @@ class App
     }
     public function openQueueFile(string $queue_id, $mode)
     {
-        $file = $this->_getQueueFileFromId($queue_id);
+        $file = $this->getQueueFileFromId($queue_id);
         if (!is_dir(dirname($file))) {
             mkdir(dirname($file), 0755, true);
         }
@@ -872,7 +881,7 @@ class App
     }
     public function getQueueItems(string $queue_id, int $n = 1)
     {
-        $fh = $this->_openQueueFile($queue_id, 'r');
+        $fh = $this->openQueueFile($queue_id, 'r');
         $data = [];
         while (($line = fgets($fh)) !== false && $n > 0) {
             $line = trim($line);
@@ -886,9 +895,9 @@ class App
     }
     public function removeQueueItems(string $queue_id, int $n = 1)
     {
-        $fh = $this->_openQueueFile($queue_id, 'r');
+        $fh = $this->openQueueFile($queue_id, 'r');
         $tmp_q = uniqid('tmp_');
-        $tmp = $this->_openQueueFile($tmp_q, 'w');
+        $tmp = $this->openQueueFile($tmp_q, 'w');
         while (($line = fgets($fh)) !== false) {
             if ($n > 0) {
                 $n--;
@@ -898,11 +907,11 @@ class App
         }
         fclose($fh);
         fclose($tmp);
-        rename($this->_getQueueFileFromId($tmp_q), $this->_getQueueFileFromId($queue_id));
+        rename($this->getQueueFileFromId($tmp_q), $this->getQueueFileFromId($queue_id));
     }
     public function addQueueItems(string $queue_id, array $items)
     {
-        $fh = $this->_openQueueFile($queue_id, 'a');
+        $fh = $this->openQueueFile($queue_id, 'a');
         foreach ($items as $item) {
             fwrite($fh, serialize($item) . "\n");
         }
