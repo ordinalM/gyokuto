@@ -1,7 +1,9 @@
 <?php
+
 /**
  * Test the queue system.
  */
+
 require_once(__DIR__ . '/../src/GyokutoApp.class.php');
 
 $g = new Gyokuto\App();
