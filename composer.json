@@ -6,7 +6,8 @@
         "michelf/php-markdown": "^1.9"
     },
     "require-dev": {
-        "rector/rector": "^0.7.41"
+        "rector/rector": "^0.7.41",
+        "squizlabs/php_codesniffer": "*"
     },
     "autoload": {
         "psr-4": { "Gyokuto\\": "src/classes/" }
