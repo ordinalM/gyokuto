@@ -30,11 +30,11 @@ class App
 	/**
 	 * @var Logger
 	 */
-	private $log;
+	private $logger;
 
 	public function __construct(array $config = [])
 	{
-		$this->log = new Logger();
+		$this->logger = new Logger();
 
 		if (!empty($config['debug'])) {
 			$this->debug = true;
@@ -172,17 +172,17 @@ class App
 		try {
 			$this->prepareBuild();
 			if ($this->performBuildOp()) {
-				$this->log->info('Did not complete build on this run');
+				$this->logger->info('Did not complete build on this run');
 				return false;
 			}
 			$this->outputBuild();
 			$this->clearBuild();
 		} catch (Exception $e) {
-			$this->log->error('Exception in build run: '$e->getMessage());
+			$this->logger->error('Exception in build run: '$e->getMessage());
 			$this->clearBuild();
 			return true;
 		}
-		$this->log->info('All build steps ');
+		$this->logger->info('All build steps succeeded');
 		$this->finishBuild();
 		return true;
 	}
