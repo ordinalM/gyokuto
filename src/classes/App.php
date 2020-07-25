@@ -68,7 +68,7 @@ class App
             [
             'content_dir' => 'content',
             'template_dir' => 'templates',
-            'output_dir' => 'public_html',
+            'output_dir' => 'www',
             'cache_dir' => 'cache',
             ] as $item => $subfolder
         ) {
@@ -195,7 +195,7 @@ class App
                     'parsed' => 0,
                     'built' => 0,
                     'base_dir' => $build_base_dir,
-                    'output_dir' => $build_base_dir . '/public_html',
+                    'output_dir' => $build_base_dir . '/www',
                     'queue_id' => 'build/data/queue',
                 ],
                 'pages' => [],
