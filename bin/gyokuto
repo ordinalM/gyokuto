@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
+use Gyokuto\App;
 
 //---------------------------------------------------------------------
 // Available commands and callbacks
@@ -20,7 +21,7 @@ $commands = [
     ],
     'build-exec' => [
         'help' => 'Execute one step of a new or existing build. Normally you will not need this - use "build" instead.',
-        'callback' => function ($g) { exit($g->buildTry() ? 0 : 1); },
+        'callback' => function ($g) { exit($g->buildRun() == App::BUILD_STATUS_FINISHED ? 0 : 1); },
     ],
     'build-clear' => [
         'help' => 'Clear data for an existing build that has been interrupted.',
@@ -50,13 +51,13 @@ if (!empty($argv[1]) && isset($commands[$argv[1]])) {
         if (preg_match('/^--([a-z_\-0-9]+)=(.+)$/', $arg, $matches) && in_array($matches[1], $allowed_options)) {
             $arg_string[] = $arg;
             $options[$matches[1]] = $matches[2];
-            printf("Option %s set to %s\n", $matches[1], $matches[2]);
+//            printf("Option %s set to %s\n", $matches[1], $matches[2]);
         }
         else {
             echo "Ignoring argument $arg\n";
         }
     }
-    $g = new Gyokuto\App($options);
+    $g = new App($options);
     $g->_initial_argv = implode(' ', $arg_string);
     // Run callback for command if known.
     $commands[$argv[1]]['callback']($g);
