@@ -114,7 +114,7 @@ class App
 		$this->loadTwigEnvironment();
 	}
 
-	public function loadTwigEnvironment() : void
+	private function loadTwigEnvironment() : void
 	{
 		unset($this->twig);
 		// This is the application template folder.
@@ -205,7 +205,7 @@ class App
 	/**
 	 * Initialise or load current build
 	 */
-	public function prepareBuild()
+	private function prepareBuild()
 	{
 		if ($build = $this->loadCurrentBuild()) {
 			$this->logger->debug('Existing build found, loading and continuing');
@@ -240,12 +240,11 @@ class App
 			}
 
 			// Collate content
-			$content_files = array_map(
-				function ($file) {
-					return $this->stripContentDir($file);
-				},
-				$this->findAllFiles($this->config['content_dir'])
-			);
+			$array_map = [];
+			foreach ($this->findAllFiles($this->config['content_dir']) as $key => $file) {
+				$array_map[$key] = $this->stripContentDir($file);
+			}
+			$content_files = $array_map;
 
 			$this->logger->info('Content files found: ' . count($content_files));
 			foreach ($this->config['metadata_index'] as $item) {
@@ -314,7 +313,7 @@ class App
 		return true;
 	}
 
-	public function loadCurrentBuild()
+	private function loadCurrentBuild()
 	{
 		$build_cache_dir = $this->config['cache_dir'] . '/build/data';
 		$this->logger->debug('Checking for cached build data dir at ' . $build_cache_dir);
@@ -330,7 +329,7 @@ class App
 		return empty($build) ? false : $build;
 	}
 
-	public function saveCurrentBuild()
+	private function saveCurrentBuild()
 	{
 		foreach ($this->build as $index => $data) {
 			if ($index != 'queue') {
@@ -340,7 +339,7 @@ class App
 		}
 	}
 
-	public function outputBuild()
+	private function outputBuild()
 	{
 		// Output to output base
 		if (file_exists($this->config['output_dir'])) {
@@ -364,7 +363,7 @@ class App
 		rename($this->build['config']['output_dir'], $this->config['output_dir']);
 	}
 
-	public function finishBuild()
+	private function finishBuild()
 	{
 		$this->logger->debug('Finishing build...');
 		// Remove build dir if it wasn't moved (probably because of an exception)
@@ -384,7 +383,7 @@ class App
 	/**
 	 * Find all files in a directory recursively.
 	 */
-	public function findAllFiles($base_dir, $options = array(), &$files = array())
+	private function findAllFiles($base_dir, $options = array(), &$files = array())
 	{
 		$options = array_merge(
 			[
@@ -687,22 +686,22 @@ class App
 		return str_replace($this->config['content_dir'], '', $file);
 	}
 
-	public function contentToBuildFile(string $file)
+	private function contentToBuildFile(string $file)
 	{
 		return str_replace($this->config['content_dir'], $this->build['config']['output_dir'], $file);
 	}
 
-	public static function fileIsMarkdown(string $file)
+	private static function fileIsMarkdown(string $file)
 	{
 		return is_file($file) && substr(strtolower($file), -3) == '.md';
 	}
 
-	public static function fileIsYaml(string $file)
+	private function fileIsYaml(string $file)
 	{
 		return is_file($file) && preg_match('/\.ya?ml$/', $file);
 	}
 
-	public function getPageIdFromContentFile(string $file)
+	private function getPageIdFromContentFile(string $file)
 	{
 		return trim($this->stripContentDir(preg_replace('/(\.\w+?)$/', '', $file)), '/');
 	}
@@ -710,7 +709,7 @@ class App
 	/**
 	 * Deletes an entire directory.
 	 */
-	public function deleteDir(string $dir): bool
+	private function deleteDir(string $dir): bool
 	{
 		foreach ($this->findAllFiles($dir, [ 'include_all' => true ]) as $file) {
 			if (is_dir($file)) {
@@ -754,7 +753,7 @@ class App
 	 *
 	 * Filename is included, to take renaming/moving into account.
 	 */
-	public function contentChecksum()
+	private function contentChecksum()
 	{
 		$files = $this->findAllFiles($this->config['content_dir']);
 		$checksum = '';
@@ -767,7 +766,7 @@ class App
 	/**
 	 * Create thumbs for a gallery and apply a template.
 	 */
-	public static function makeGallery($context, string $dir, array $options = array())
+	private static function makeGallery($context, string $dir, array $options = array())
 	{
 		$dir = rtrim($dir, '/');
 		$options += [
@@ -848,16 +847,17 @@ class App
 		return (false !== file_put_contents($cache_file, serialize($data)));
 	}
 
-	public function cacheGet(string $cache_id)
+	private function cacheGet(string $cache_id)
 	{
 		return static::cacheGetStatic($cache_id, $this->config['cache_dir']);
 	}
-	public function cacheSet(string $cache_id, &$data)
+
+	private function cacheSet(string $cache_id, &$data)
 	{
 		return static::cacheSetStatic($cache_id, $this->config['cache_dir'], $data);
 	}
 
-	public static function getCacheFile(string $cache_id, string $cache_dir)
+	private static function getCacheFile(string $cache_id, string $cache_dir)
 	{
 		return $cache_dir . '/' . $cache_id;
 	}
@@ -865,11 +865,13 @@ class App
 	/**
 	 * Queue functions
 	 */
-	public function getQueueFileFromId(string $queue_id)
+
+	private function getQueueFileFromId(string $queue_id)
 	{
 		return $this->config['cache_dir'] . '/' . trim($queue_id, '/');
 	}
-	public function openQueueFile(string $queue_id, $mode)
+
+	private function openQueueFile(string $queue_id, $mode)
 	{
 		$file = $this->getQueueFileFromId($queue_id);
 		if (!is_dir(dirname($file))) {
@@ -877,7 +879,8 @@ class App
 		}
 		return fopen($file, $mode);
 	}
-	public function getQueueItems(string $queue_id, int $n = 1)
+
+	private function getQueueItems(string $queue_id, int $n = 1)
 	{
 		$fh = $this->openQueueFile($queue_id, 'r');
 		$data = [];
@@ -891,7 +894,8 @@ class App
 		fclose($fh);
 		return $data;
 	}
-	public function removeQueueItems(string $queue_id, int $n = 1)
+
+	private function removeQueueItems(string $queue_id, int $n = 1)
 	{
 		$fh = $this->openQueueFile($queue_id, 'r');
 		$tmp_q = uniqid('tmp_');
@@ -907,7 +911,8 @@ class App
 		fclose($tmp);
 		rename($this->getQueueFileFromId($tmp_q), $this->getQueueFileFromId($queue_id));
 	}
-	public function addQueueItems(string $queue_id, array $items)
+
+	private function addQueueItems(string $queue_id, array $items)
 	{
 		$fh = $this->openQueueFile($queue_id, 'a');
 		foreach ($items as $item) {
@@ -916,16 +921,14 @@ class App
 		fclose($fh);
 	}
 
-	public static function splitMarkdownFile(string $raw)
+	private static function splitMarkdownFile(string $raw)
 	{
 		if (preg_match('/^---\n(.+?)\n---\n\s*(.*)\s*$/s', $raw, $matches)) {
 			return [
 				'meta' => Yaml::parse($matches[1]),
 				'md' => $matches[2],
 			];
-		} else {
-			throw new \Exception("Failed to parse:\n" . $raw);
-			return [ 'meta' => [], 'md' => $raw ];
 		}
+		throw new Exception("Failed to parse:\n" . $raw);
 	}
 }
