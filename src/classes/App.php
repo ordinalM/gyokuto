@@ -8,6 +8,7 @@ namespace Gyokuto;
 
 use Exception;
 use Monolog\Logger;
+use Twig\Error\RuntimeError;
 use Twig\Extra\Markdown\DefaultMarkdown;
 use Twig\Extra\Markdown\MarkdownRuntime;
 use Twig\RuntimeLoader\RuntimeLoaderInterface;
@@ -18,6 +19,10 @@ class App
 	private const BUILD_OP_PARSE = 0;
 	private const BUILD_OP_BUILD = 1;
 
+	private const BUILD_STATUS_EXCEPTION = 1;
+	private const BUILD_STATUS_UNFINISHED = 2;
+	private const BUILD_STATUS_FINISHED = 3;
+
 	/**
 	 * @var false|string
 	 */
@@ -25,7 +30,6 @@ class App
 	private $config;
 	private $twig;
 	public $build;
-	public $debug = false;
 
 	/**
 	 * @var Logger
@@ -36,9 +40,6 @@ class App
 	{
 		$this->logger = new Logger();
 
-		if (!empty($config['debug'])) {
-			$this->debug = true;
-		}
 		// The root of the entire application should be this.
 		$this->app_base = realpath(__DIR__ . '/../..');
 		if (empty($this->app_base)) {
@@ -98,9 +99,7 @@ class App
 			$this->config[$option] = rtrim($this->config[$option], '/');
 		}
 
-		if ($this->debug) {
-			$this->log("Config loaded:\n---\n" . Yaml::dump($this->config) . "---");
-		}
+		$this->logger->debug("Config loaded:\n---\n" . Yaml::dump($this->config) . "---");
 
 		// Check content directory.
 		if (!file_exists($this->config['content_dir']) && is_dir($this->config['content_dir'])) {
@@ -160,9 +159,12 @@ class App
 	 */
 	public function build() : bool
 	{
-		$complete = false;
-		while (!$complete) {
-			$complete = $this->buildTry();
+		$status = self::BUILD_STATUS_UNFINISHED;
+		while ($status == self::BUILD_STATUS_UNFINISHED) {
+			$status = $this->buildTry();
+		}
+		if ($status == self::BUILD_STATUS_EXCEPTION) {
+			return false;
 		}
 		return true;
 	}
@@ -172,19 +174,19 @@ class App
 		try {
 			$this->prepareBuild();
 			if ($this->performBuildOp()) {
-				$this->logger->info('Did not complete build on this run');
-				return false;
+				$this->logger->debug('Did not complete build on this run');
+				return self::BUILD_STATUS_UNFINISHED;
 			}
 			$this->outputBuild();
 			$this->clearBuild();
 		} catch (Exception $e) {
 			$this->logger->error('Exception in build run: '$e->getMessage());
 			$this->clearBuild();
-			return true;
+			return self::BUILD_STATUS_EXCEPTION;
 		}
 		$this->logger->info('All build steps succeeded');
 		$this->finishBuild();
-		return true;
+		return self::BUILD_STATUS_FINISHED;
 	}
 
 	/**
@@ -194,9 +196,9 @@ class App
 	{
 		if (is_dir($build_cache = $this->config['cache_dir'] . '/build')) {
 			$this->deleteDir($build_cache);
-			$this->log('Cleared cached build');
+			$this->logger->info('Cleared cached build');
 		} else {
-			$this->log('No cached build to clear');
+			$this->logger->info('No cached build to clear');
 		}
 	}
 
@@ -206,10 +208,10 @@ class App
 	public function prepareBuild()
 	{
 		if ($build = $this->loadCurrentBuild()) {
-			$this->logIfDebug('Existing build found, loading and continuing');
+			$this->logger->debug('Existing build found, loading and continuing');
 			$this->build = $build;
 		} else {
-			$this->log('Starting new build at ' . date('c'));
+			$this->logger->info('Starting new build at ' . date('c'));
 			$build_base_dir = $this->config['cache_dir'] . '/build';
 			$this->build = [
 				'config' => [
@@ -227,12 +229,12 @@ class App
 
 			// Remove any existing base build dir
 			if (is_dir($this->build['config']['base_dir'])) {
-				$this->logIfDebug('Deleting existing base build dir');
+				$this->logger->debug('Deleting existing base build dir');
 				$this->deleteDir($this->build['config']['base_dir']);
 			}
 			// Create build dir
 			if (mkdir($this->build['config']['output_dir'], 0775, true)) {
-				$this->log('Created build output dir at ' . $this->build['config']['output_dir']);
+				$this->logger->info('Created build output dir at ' . $this->build['config']['output_dir']);
 			} else {
 				throw new \Exception('Could not create build output dir at ' . $this->build['config']['output_dir']);
 			}
@@ -245,7 +247,7 @@ class App
 				$this->findAllFiles($this->config['content_dir'])
 			);
 
-			$this->log('Content files found: ' . count($content_files));
+			$this->logger->info('Content files found: ' . count($content_files));
 			foreach ($this->config['metadata_index'] as $item) {
 				$this->build['config']['metadata_index'][$item] = [];
 			}
@@ -263,7 +265,7 @@ class App
 			}
 			$this->addQueueItems($this->build['config']['queue_id'], $queue);
 
-			$this->logIfDebug('Added required operations to queue');
+			$this->logger->debug('Added required operations to queue');
 
 			// Cache this build
 			$this->saveCurrentBuild();
@@ -275,12 +277,10 @@ class App
 		$this->config['queue_buffer_size'] = 1000;
 		$queue_buffer = $this->getQueueItems($this->build['config']['queue_id'], $this->config['queue_buffer_size']);
 		if (empty($queue_buffer)) {
-			if ($this->debug) {
-				$this->log('No build queue items left');
-			}
+			$this->logger->debug('No build queue items left');
 			return false;
 		}
-		$this->logIfDebug(count($queue_buffer) . ' items loaded from build queue');
+		$this->logger->debug(count($queue_buffer) . ' items loaded from build queue');
 		$this->loadTwigEnvironment();
 		foreach ($queue_buffer as $item) {
 			list($op, $file) = $item;
@@ -294,13 +294,13 @@ class App
 						$this->indexMetadata($page_data);
 						$this->build['config']['parsed']++;
 						if ($this->build['config']['parsed'] % 500 == 0) {
-							$this->log(sprintf('Parsed %d files', $this->build['config']['parsed']));
+							$this->logger->info(sprintf('Parsed %d files', $this->build['config']['parsed']));
 						}
 					}
 					break;
 				case static::BUILD_OP_BUILD:
 					// This is the final build phase.
-					$this->log(
+					$this->logger->info(
 						sprintf("%d\t%s", ++$this->build['config']['built'], $this->processContentToBuild($file))
 					);
 					break;
@@ -308,7 +308,7 @@ class App
 					throw new \Exception(sprintf('Build operation %d not understood', $op));
 			}
 		}
-		$this->logIfDebug('Finished build run, saving current build and removing items');
+		$this->logger->debug('Finished build run, saving current build and removing items');
 		$this->saveCurrentBuild();
 		$this->removeQueueItems($this->build['config']['queue_id'], count($queue_buffer));
 		return true;
@@ -317,16 +317,16 @@ class App
 	public function loadCurrentBuild()
 	{
 		$build_cache_dir = $this->config['cache_dir'] . '/build/data';
-		$this->logIfDebug('Checking for cached build data dir at ' . $build_cache_dir);
+		$this->logger->debug('Checking for cached build data dir at ' . $build_cache_dir);
 		if (!is_dir($build_cache_dir)) {
-			$this->logIfDebug('None found');
+			$this->logger->debug('None found');
 			return false;
 		}
 		$build = [];
 		foreach (array_diff(scandir($this->config['cache_dir'] . '/build/data'), array('..', '.')) as $index) {
 			$build[$index] = $this->cacheGet('build/data/' . $index);
 		}
-		$this->logIfDebug('Existing build loaded');
+		$this->logger->debug('Existing build loaded');
 		return empty($build) ? false : $build;
 	}
 
@@ -334,9 +334,7 @@ class App
 	{
 		foreach ($this->build as $index => $data) {
 			if ($index != 'queue') {
-				if ($this->debug) {
-					$this->log('Saving CID build/data/' . $index);
-				}
+				$this->logger->debug('Saving CID build/data/' . $index);
 				$this->cacheSet('build/data/' . $index, $data);
 			}
 		}
@@ -348,7 +346,7 @@ class App
 		if (file_exists($this->config['output_dir'])) {
 			if (is_dir($this->config['output_dir'])) {
 				$this->deleteDir($this->config['output_dir']);
-				$this->log('Removed old output dir ' . $this->config['output_dir']);
+				$this->logger->info('Removed old output dir ' . $this->config['output_dir']);
 			} else {
 				throw new Exception(
 					$this->config['output_dir']
@@ -356,7 +354,7 @@ class App
 				);
 			}
 		}
-		$this->log(
+		$this->logger->info(
 			sprintf(
 				'Moving build dir %s to output dir %s',
 				$this->build['config']['output_dir'],
@@ -368,21 +366,19 @@ class App
 
 	public function finishBuild()
 	{
-		if ($this->debug) {
-			$this->log('Finishing build...');
-		}
+		$this->logger->debug('Finishing build...');
 		// Remove build dir if it wasn't moved (probably because of an exception)
 		if (is_dir($this->build['config']['output_dir'])) {
-			$this->log('Deleting build dir ' . $this->build['config']['output_dir']);
+			$this->logger->info('Deleting build dir ' . $this->build['config']['output_dir']);
 			$this->deleteDir($this->build['config']['output_dir']);
 		}
 
 		// Output the exception if it interrupted build
 		if (isset($e)) {
-			$this->log((string)$e);
+			$this->logger->info((string)$e);
 		}
 
-		$this->log(sprintf('Finished in %f seconds', (microtime(true) - $this->build['config']['start_microtime'])));
+		$this->logger->info(sprintf('Finished in %f seconds', (microtime(true) - $this->build['config']['start_microtime'])));
 	}
 
 	/**
@@ -456,7 +452,7 @@ class App
 			$output_file = preg_replace('/(\.md)$/', '.html', $file);
 		} elseif (empty(trim($page_meta['output_file']))) {
 			$output_file = false;
-			$this->log($file . ' has empty output_file');
+			$this->logger->info($file . ' has empty output_file');
 		} else {
 			$output_file = $this->config['content_dir'] . '/' . ltrim($page_meta['output_file'], '/');
 		}
@@ -514,11 +510,11 @@ class App
 			mkdir($build_file_dir, 0775, true);
 		}
 
-		$this->logIfDebug('Processing ' . $file . ' for build');
+		$this->logger->debug('Processing ' . $file . ' for build');
 
 		// Decide what to do with the file
 		if (static::fileIsMarkdown($file)) {
-			$this->logIfDebug('Building as markdown');
+			$this->logger->debug('Building as markdown');
 //             $mp = new \Pagerange\Markdown\MetaParsedown();
 			// Render markdown files
 			$page_index = $this->getPageIdFromContentFile($file);
@@ -527,7 +523,7 @@ class App
 				$pages_to_build = [];
 				// Is this paginated?
 				if (isset($source_page['meta']['pagination'])) {
-					$this->logIfDebug('Processing as paginated');
+					$this->logger->debug('Processing as paginated');
 					if ($source_page['meta']['pagination']['data'] == 'pages') {
 						// For pagination on pages array, split build data up into multiple output pages.
 						// Subset existing pages array to match what template wants
@@ -636,7 +632,7 @@ class App
 				// Loop through pages to build
 				foreach ($pages_to_build as $page) {
 					$build_file = $page['_build_file'];
-					$this->logIfDebug('Building page from ' . $page['_build_file']);
+					$this->logger->debug('Building page from ' . $page['_build_file']);
 					unset($page['_build_file']);
 					$page_params = [
 						'current_page' => $page,
@@ -644,7 +640,7 @@ class App
 						'pages' => &$this->build['pages'],
 					];
 					// Render markdown content, using Twig content filter first
-					$this->logIfDebug('Rendering markdown with twig content filter');
+					$this->logger->debug('Rendering markdown with twig content filter');
 					$page_params['current_page']['content'] =
 						$this->twig->render(
 							'_convert_twig_in_content.twig',
@@ -656,7 +652,7 @@ class App
 						)
 					;
 					// Render page template and output
-					$this->logIfDebug('Rendering final markdown');
+					$this->logger->debug('Rendering final markdown');
 					$rendered_page = $this->twig->render(
 						$page['meta']['template'],
 						$page_params
@@ -712,28 +708,6 @@ class App
 	}
 
 	/**
-	 * Log messages.
-	 */
-	public static function log($value)
-	{
-		if (is_string($value)) {
-			echo "$value\n";
-		} else {
-			var_dump($value);
-		}
-	}
-
-	/**
-	 * Only log if debug is set
-	 */
-	public function logIfDebug($value)
-	{
-		if ($this->debug) {
-			$this->log($value);
-		}
-	}
-
-	/**
 	 * Deletes an entire directory.
 	 */
 	public function deleteDir(string $dir): bool
@@ -758,13 +732,13 @@ class App
 	 */
 	public function watch()
 	{
-		$this->log("Watching for changes in {$this->config['content_dir']}... (CTRL-C to stop)\n");
+		$this->logger->info("Watching for changes in {$this->config['content_dir']}... (CTRL-C to stop)\n");
 		$checksum_cache_id = 'watch/' . md5($this->config['content_dir']);
 		$checksum = $this->cacheGet($checksum_cache_id);
 		while (($new_checksum = $this->contentChecksum()) == $checksum) {
 			sleep($this->config['watch_interval']);
 		}
-		$this->log(
+		$this->logger->info(
 			sprintf(
 				'Content change detected at %s - old checksum %s, new checksum %s',
 				date('c'),
@@ -803,7 +777,7 @@ class App
 		];
 		$file_dir = realpath($context['config']['content_dir'] . $dir);
 		if (!is_dir($file_dir)) {
-			throw new \Twig\Error\RuntimeError('Could not find gallery image directory ' . $dir);
+			throw new RuntimeError('Could not find gallery image directory ' . $dir);
 		}
 		$gallery = [ 'images' => [] ];
 		$yaml_data = [];
@@ -871,7 +845,7 @@ class App
 		if (!is_dir(dirname($cache_file))) {
 			mkdir(dirname($cache_file), 0755, true);
 		}
-		file_put_contents($cache_file, serialize($data));
+		return (false !== file_put_contents($cache_file, serialize($data)));
 	}
 
 	public function cacheGet(string $cache_id)
