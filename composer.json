@@ -5,7 +5,8 @@
         "twig/markdown-extra": "^3.0",
         "michelf/php-markdown": "^1.9",
         "fzaninotto/faker": "^1.9",
-        "monolog/monolog": "^2.1"
+        "monolog/monolog": "^2.1",
+        "ext-gd": "*"
     },
     "require-dev": {
         "rector/rector": "^0.7.41",
