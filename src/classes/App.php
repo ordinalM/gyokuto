@@ -7,21 +7,31 @@
 namespace Gyokuto;
 
 use Exception;
+use Monolog\Handler\ErrorLogHandler;
 use Monolog\Logger;
+use Twig\Environment;
 use Twig\Error\RuntimeError;
+use Twig\Extension\StringLoaderExtension;
 use Twig\Extra\Markdown\DefaultMarkdown;
+use Twig\Extra\Markdown\MarkdownExtension;
 use Twig\Extra\Markdown\MarkdownRuntime;
+use Twig\Loader\ChainLoader;
+use Twig\Loader\FilesystemLoader;
 use Twig\RuntimeLoader\RuntimeLoaderInterface;
 use Symfony\Component\Yaml\Yaml;
+use Twig\TwigFunction;
 
 class App
 {
 	private const BUILD_OP_PARSE = 0;
 	private const BUILD_OP_BUILD = 1;
 
-	private const BUILD_STATUS_EXCEPTION = 1;
-	private const BUILD_STATUS_UNFINISHED = 2;
-	private const BUILD_STATUS_FINISHED = 3;
+	public const BUILD_STATUS_EXCEPTION = 1;
+	public const BUILD_STATUS_UNFINISHED = 2;
+	public const BUILD_STATUS_FINISHED = 3;
+
+	private const LOG_LEVEL = Logger::DEBUG;
+	private const DEFAULT_QUEUE_BUFFER_SIZE = 1000;
 
 	/**
 	 * @var false|string
@@ -29,7 +39,7 @@ class App
 	private $app_base;
 	private $config;
 	private $twig;
-	public $build;
+	private $build;
 
 	/**
 	 * @var Logger
@@ -38,7 +48,13 @@ class App
 
 	public function __construct(array $config = [])
 	{
-		$this->logger = new Logger();
+		$this->logger = new Logger(__NAMESPACE__);
+		$this->logger->pushHandler(
+			new ErrorLogHandler(
+				ErrorLogHandler::OPERATING_SYSTEM,
+				self::LOG_LEVEL
+			)
+		);
 
 		// The root of the entire application should be this.
 		$this->app_base = realpath(__DIR__ . '/../..');
@@ -47,22 +63,22 @@ class App
 		}
 
 		// Default configuration
-		$this->config = array(
+		$this->config = [
 			'base_url' => '',
-			'config_dir' => $this->app_base . '/config',
+			'config_dir' => './config',
 			'watch_interval' => 1,
 			'metadata_index' => [], // A list of metadata tags to index posts under
-			'queue_buffer_size' => 1000,
+			'queue_buffer_size' => self::DEFAULT_QUEUE_BUFFER_SIZE,
 			'output_variable' => [],
 			'exclude_files' => [],
-		);
+		];
 
 		// Merge in passed config - this can modify the config dir so do this first
 		foreach ($config as $k => $v) {
 			$this->config[$k] = $v;
 		}
 
-		// Read in and merge config files.
+		// Read in and merge config file.
 		$this->config['config_dir'] = realpath($this->config['config_dir']);
 		if (is_dir($this->config['config_dir'])) {
 			$config_files = scandir($this->config['config_dir']);
@@ -76,7 +92,7 @@ class App
 				}
 			}
 		} else {
-			throw new \Exception('Config dir is not a directory: ' . $this->config['config_dir']);
+			throw new Exception('Config dir is not a directory: ' . $this->config['config_dir']);
 		}
 
 		// Calculate default directories
@@ -99,7 +115,7 @@ class App
 			$this->config[$option] = rtrim($this->config[$option], '/');
 		}
 
-		$this->logger->debug("Config loaded:\n---\n" . Yaml::dump($this->config) . "---");
+		$this->logger->debug("Config loaded", $this->config);
 
 		// Check content directory.
 		if (!file_exists($this->config['content_dir']) && is_dir($this->config['content_dir'])) {
@@ -110,20 +126,18 @@ class App
 		if (!is_dir($this->config['template_dir'])) {
 			throw new Exception('Could not find template directory at ' . $this->config['template_dir']);
 		}
-
-		$this->loadTwigEnvironment();
 	}
 
-	private function loadTwigEnvironment() : void
+	private function getTwigEnvironment() : Environment
 	{
-		unset($this->twig);
 		// This is the application template folder.
-		$loader_file_src = new \Twig\Loader\FilesystemLoader($this->app_base . '/src/templates');
+		$loader_file_src = new FilesystemLoader($this->app_base . '/src/templates');
 		// This is the user template folder.
-		$loader_file = new \Twig\Loader\FilesystemLoader($this->config['template_dir']);
+		$loader_file = new FilesystemLoader($this->config['template_dir']);
 		// Chain them together
-		$loader = new \Twig\Loader\ChainLoader([ $loader_file, $loader_file_src ]);
-		$this->twig = new \Twig\Environment(
+		$loader = new ChainLoader([ $loader_file, $loader_file_src ]);
+		// Create the Twig environment
+		$twig = new Environment(
 			$loader,
 			[
 				'autoescape' => false,
@@ -132,7 +146,7 @@ class App
 				'cache' => $this->config['cache_dir'] . '/twig',
 			]
 		);
-		$this->twig->addRuntimeLoader(new class implements RuntimeLoaderInterface {
+		$twig->addRuntimeLoader(new class implements RuntimeLoaderInterface {
 			public function load($class)
 			{
 				if (MarkdownRuntime::class === $class) {
@@ -140,20 +154,21 @@ class App
 				}
 			}
 		});        // We use the string loader extension to parse Twig in markdown body.
-		$this->twig->addExtension(new \Twig\Extension\StringLoaderExtension());
-		$this->twig->addExtension(new \Twig\Extra\Markdown\MarkdownExtension());
+		$twig->addExtension(new StringLoaderExtension());
+		$twig->addExtension(new MarkdownExtension());
 		// Add a function for making galleries.
-		$this->twig->addFunction(
-			new \Twig\TwigFunction(
+		$twig->addFunction(
+			new TwigFunction(
 				'gyokuto_gallery',
-				'\Gyokuto\App::makeGallery',
+				[ self::class, 'makeGallery'],
 				[ 'needs_context' => true ]
 			)
 		);
+		return $twig;
 	}
 
 	/**
-	 * Run a full build
+	 * Do a full build
 	 *
 	 * @return bool
 	 */
@@ -161,7 +176,7 @@ class App
 	{
 		$status = self::BUILD_STATUS_UNFINISHED;
 		while ($status == self::BUILD_STATUS_UNFINISHED) {
-			$status = $this->buildTry();
+			$status = $this->buildRun();
 		}
 		if ($status == self::BUILD_STATUS_EXCEPTION) {
 			return false;
@@ -169,18 +184,18 @@ class App
 		return true;
 	}
 
-	public function buildTry()
+	public function buildRun()
 	{
 		try {
 			$this->prepareBuild();
-			if ($this->performBuildOp()) {
+			if ($this->performBuildOps()) {
 				$this->logger->debug('Did not complete build on this run');
 				return self::BUILD_STATUS_UNFINISHED;
 			}
 			$this->outputBuild();
 			$this->clearBuild();
 		} catch (Exception $e) {
-			$this->logger->error('Exception in build run: '$e->getMessage());
+			$this->logger->error('Exception in build run: ' . $e->getMessage());
 			$this->clearBuild();
 			return self::BUILD_STATUS_EXCEPTION;
 		}
@@ -211,7 +226,7 @@ class App
 			$this->logger->debug('Existing build found, loading and continuing');
 			$this->build = $build;
 		} else {
-			$this->logger->info('Starting new build at ' . date('c'));
+			$this->logger->debug('Starting new build');
 			$build_base_dir = $this->config['cache_dir'] . '/build';
 			$this->build = [
 				'config' => [
@@ -236,15 +251,14 @@ class App
 			if (mkdir($this->build['config']['output_dir'], 0775, true)) {
 				$this->logger->info('Created build output dir at ' . $this->build['config']['output_dir']);
 			} else {
-				throw new \Exception('Could not create build output dir at ' . $this->build['config']['output_dir']);
+				throw new Exception('Could not create build output dir at ' . $this->build['config']['output_dir']);
 			}
 
 			// Collate content
-			$array_map = [];
+			$content_files = [];
 			foreach ($this->findAllFiles($this->config['content_dir']) as $key => $file) {
-				$array_map[$key] = $this->stripContentDir($file);
+				$content_files[$key] = $this->stripContentDir($file);
 			}
-			$content_files = $array_map;
 
 			$this->logger->info('Content files found: ' . count($content_files));
 			foreach ($this->config['metadata_index'] as $item) {
@@ -254,16 +268,15 @@ class App
 			// Calculate required operations
 			$queue = [];
 			foreach ([static::BUILD_OP_PARSE, static::BUILD_OP_BUILD] as $op) {
-				foreach ($content_files as $file) {
-					$queue[] = [ $op, $file ];
-					if (count($queue) % 1000 == 0) {
+				$this_content_files = $content_files;
+				while (count($this_content_files) > 0) {
+					$queue[] = [ $op, array_shift($this_content_files) ];
+					if (count($this_content_files) == 0 || count($queue) % 1000 == 0) {
 						$this->addQueueItems($this->build['config']['queue_id'], $queue);
 						$queue = [];
 					}
 				}
 			}
-			$this->addQueueItems($this->build['config']['queue_id'], $queue);
-
 			$this->logger->debug('Added required operations to queue');
 
 			// Cache this build
@@ -271,16 +284,15 @@ class App
 		}
 	}
 
-	private function performBuildOp()
+	private function performBuildOps()
 	{
-		$this->config['queue_buffer_size'] = 1000;
 		$queue_buffer = $this->getQueueItems($this->build['config']['queue_id'], $this->config['queue_buffer_size']);
 		if (empty($queue_buffer)) {
 			$this->logger->debug('No build queue items left');
 			return false;
 		}
 		$this->logger->debug(count($queue_buffer) . ' items loaded from build queue');
-		$this->loadTwigEnvironment();
+		$this->twig = $this->getTwigEnvironment();
 		foreach ($queue_buffer as $item) {
 			list($op, $file) = $item;
 			$file = $this->config['content_dir'] . $file;
@@ -304,7 +316,7 @@ class App
 					);
 					break;
 				default:
-					throw new \Exception(sprintf('Build operation %d not understood', $op));
+					throw new Exception(sprintf('Build operation %d not understood', $op));
 			}
 		}
 		$this->logger->debug('Finished build run, saving current build and removing items');
@@ -500,7 +512,6 @@ class App
 	public function processContentToBuild($file)
 	{
 		$start = microtime(true);
-		$action = false;
 
 		// Calculate build filename and create directories if necessary
 		$build_file = $this->contentToBuildFile($file);
@@ -514,7 +525,6 @@ class App
 		// Decide what to do with the file
 		if (static::fileIsMarkdown($file)) {
 			$this->logger->debug('Building as markdown');
-//             $mp = new \Pagerange\Markdown\MetaParsedown();
 			// Render markdown files
 			$page_index = $this->getPageIdFromContentFile($file);
 			// Check that we have data at all
@@ -714,14 +724,14 @@ class App
 		foreach ($this->findAllFiles($dir, [ 'include_all' => true ]) as $file) {
 			if (is_dir($file)) {
 				if (!rmdir($file)) {
-					throw new \Exception('Could not delete dir ' . $file);
+					throw new Exception('Could not delete dir ' . $file);
 				}
 			} elseif (!unlink($file)) {
-				throw new \Exception('Could not delete file ' . $file);
+				throw new Exception('Could not delete file ' . $file);
 			}
 		}
 		if (!rmdir($dir)) {
-			throw new \Exception('Could not delete dir ' . $dir);
+			throw new Exception('Could not delete dir ' . $dir);
 		}
 		return true;
 	}
@@ -766,7 +776,7 @@ class App
 	/**
 	 * Create thumbs for a gallery and apply a template.
 	 */
-	private static function makeGallery($context, string $dir, array $options = array())
+	public static function makeGallery($context, string $dir, array $options = array())
 	{
 		$dir = rtrim($dir, '/');
 		$options += [
