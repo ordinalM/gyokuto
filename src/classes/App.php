@@ -33,9 +33,6 @@ class App
 	private const LOG_LEVEL = Logger::DEBUG;
 	private const DEFAULT_QUEUE_BUFFER_SIZE = 1000;
 
-	/**
-	 * @var false|string
-	 */
 	private $app_base;
 	private $config;
 	private $twig;

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6e82a915b2fd6487a411e531911b4a20",
+    "content-hash": "2cf81ec950c24a5ecada730de71911ed",
     "packages": [
         {
             "name": "fzaninotto/faker",
@@ -3532,6 +3532,7 @@
                 "MIT"
             ],
             "description": "Prevent silent parameter typos that silently break your app",
+            "abandoned": true,
             "time": "2020-06-25T16:39:17+00:00"
         },
         {
@@ -3698,6 +3699,9 @@
     "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
-    "platform": [],
+    "platform": {
+        "ext-gd": "*",
+        "php": "^7.3"
+    },
     "platform-dev": []
 }
