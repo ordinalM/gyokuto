@@ -1,19 +1,28 @@
 {
-    "require": {
-        "twig/twig": "^3.0",
-        "symfony/yaml": "^5.0",
-        "twig/markdown-extra": "^3.0",
-        "michelf/php-markdown": "^1.9",
-        "fzaninotto/faker": "^1.9",
-        "monolog/monolog": "^2.1",
-        "ext-gd": "*",
-        "php": "^7.3"
-    },
-    "require-dev": {
-        "rector/rector": "^0.7.41",
-        "squizlabs/php_codesniffer": "*"
-    },
-    "autoload": {
-        "psr-4": { "Gyokuto\\": "src/classes/" }
+  "name": "ordinalm/gyokuto",
+  "description": "A static site generator module.",
+  "authors": [
+    {
+      "name": "Ordinal M"
     }
+  ],
+  "require": {
+    "twig/twig": "^3.0",
+    "symfony/yaml": "^5.0",
+    "twig/markdown-extra": "^3.0",
+    "michelf/php-markdown": "^1.9",
+    "fzaninotto/faker": "^1.9",
+    "monolog/monolog": "^2.1",
+    "ext-gd": "*",
+    "php": "^7.3"
+  },
+  "require-dev": {
+    "rector/rector": "^0.7.41",
+    "squizlabs/php_codesniffer": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Gyokuto\\": "src/classes"
+    }
+  }
 }

@@ -1,78 +1,81 @@
-#!/usr/bin/php
+#!/usr/bin/env php
 <?php
 /**
  * Command line wrapper for the Gyokuto application.
  */
 
 require_once __DIR__ . '/../vendor/autoload.php';
+
 use Gyokuto\App;
 
 //---------------------------------------------------------------------
 // Available commands and callbacks
 
 $commands = [
-    'build' => [
-        'help' => 'Start a new build or continue an existing one.',
-        'callback' => function ($g) {
-            do {
-                system(sprintf('php %s build-exec %s', __FILE__, $g->_initial_argv), $status);
-            } while ($status == 1);
-        },
-    ],
-    'build-exec' => [
-        'help' => 'Execute one step of a new or existing build. Normally you will not need this - use "build" instead.',
-        'callback' => function ($g) { exit($g->buildRun() == App::BUILD_STATUS_FINISHED ? 0 : 1); },
-    ],
-    'build-clear' => [
-        'help' => 'Clear data for an existing build that has been interrupted.',
-        'callback' => function ($g) { $g->clearBuild(); },
-    ],
-    'watch' => [
-        'help' => 'Watch the content directory for changes and rebuild if found.',
-        'callback' => function ($g) {
-            while (TRUE) {
-                $g->watch();
-                system(sprintf('php %s build', __FILE__));
-            }
-        }
-    ],
+	'build' => [
+		'help' => 'Start a new build or continue an existing one.',
+		'callback' => function ($g) {
+			do {
+				system(sprintf('php %s build-exec %s', __FILE__, $g->_initial_argv), $status);
+			} while ($status == 1);
+		},
+	],
+	'build-exec' => [
+		'help' => 'Execute one step of a new or existing build. Normally you will not need this - use "build" instead.',
+		'callback' => function ($g) {
+			exit($g->buildRun() == App::BUILD_STATUS_FINISHED ? 0 : 1);
+		},
+	],
+	'build-clear' => [
+		'help' => 'Clear data for an existing build that has been interrupted.',
+		'callback' => function ($g) {
+			$g->clearBuild();
+		},
+	],
+	'watch' => [
+		'help' => 'Watch the content directory for changes and rebuild if found.',
+		'callback' => function ($g) {
+			while (true) {
+				$g->watch();
+				system(sprintf('php %s build', __FILE__));
+			}
+		}
+	],
 ];
 
-$allowed_options = [ 'debug', 'base_url', 'content_dir', 'template_dir', 'output_dir', 'cache_dir', 'config_dir', 'watch_interval' ];
+$allowed_options = ['debug', 'base_url', 'content_dir', 'template_dir', 'output_dir', 'cache_dir', 'config_dir', 'watch_interval'];
 
 //---------------------------------------------------------------------
 // Main code
 
 if (!empty($argv[1]) && isset($commands[$argv[1]])) {
-    // Compile any command-line options
-    $options = [ ];
-    $arg_string = [];
-    foreach (array_slice($argv, 2) as $arg) {
-        if (preg_match('/^--([a-z_\-0-9]+)=(.+)$/', $arg, $matches) && in_array($matches[1], $allowed_options)) {
-            $arg_string[] = $arg;
-            $options[$matches[1]] = $matches[2];
-//            printf("Option %s set to %s\n", $matches[1], $matches[2]);
-        }
-        else {
-            echo "Ignoring argument $arg\n";
-        }
-    }
-    $g = new App($options);
-    $g->_initial_argv = implode(' ', $arg_string);
-    // Run callback for command if known.
-    $commands[$argv[1]]['callback']($g);
-}
-else {
-    // Otherwise create a help string and display.
-    $help_string = array_reduce(
-        array_keys($commands),
-        function ($acc, $k) use ($commands) {
-            return sprintf("    %s\n\n    %s\n        %s", $acc, $k, $commands[$k]['help']);
-        },
-        ''
-    );
-    $option_string = implode(', ', $allowed_options);
-    echo <<<HELP
+	// Compile any command-line options
+	$options = [];
+	$arg_string = [];
+	foreach (array_slice($argv, 2) as $arg) {
+		if (preg_match('/^--([a-z_\-0-9]+)=(.+)$/', $arg, $matches) && in_array($matches[1], $allowed_options)) {
+			$arg_string[] = $arg;
+			$options[$matches[1]] = $matches[2];
+			//            printf("Option %s set to %s\n", $matches[1], $matches[2]);
+		} else {
+			echo "Ignoring argument $arg\n";
+		}
+	}
+	$g = new App($options);
+	$g->_initial_argv = implode(' ', $arg_string);
+	// Run callback for command if known.
+	$commands[$argv[1]]['callback']($g);
+} else {
+	// Otherwise create a help string and display.
+	$help_string = array_reduce(
+		array_keys($commands),
+		function ($acc, $k) use ($commands) {
+			return sprintf("    %s\n\n    %s\n        %s", $acc, $k, $commands[$k]['help']);
+		},
+		''
+	);
+	$option_string = implode(', ', $allowed_options);
+	echo <<<HELP
 Syntax:
 
     gyokuto <command> <options>
