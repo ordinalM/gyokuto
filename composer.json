@@ -16,10 +16,6 @@
     "ext-gd": "*",
     "php": "^7.3"
   },
-  "require-dev": {
-    "rector/rector": "^0.7.41",
-    "squizlabs/php_codesniffer": "*"
-  },
   "autoload": {
     "psr-4": {
       "Gyokuto\\": "src/classes"
