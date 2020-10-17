@@ -1,6 +1,6 @@
 {
 	"name": "ordinalm/gyokuto",
-	"description": "A static site generator module.",
+	"description": "A static site generator module, using PHP, Markdown, and Twig.",
 	"authors": [
 		{
 			"name": "Ordinal M"

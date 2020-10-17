@@ -75,7 +75,7 @@ class ContentFile {
 
 		// Render markdown content, using Twig content filter first
 		Utils::getLogger()
-			->debug('Rendering markdown');
+			->debug('Rendering markdown', [$this->filename]);
 		$page_params['current_page']['content'] = $build->getTwig()
 			->render('_convert_twig_in_content.twig', $page_params);
 
