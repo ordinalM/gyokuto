@@ -70,13 +70,10 @@ class Utils {
 		$dir = realpath($dir);
 		$result_files = [];
 
-		$files = array_diff(scandir($dir), ['..', '.']);
-		if (!$filter){
-			$filter = function ($filename){
-				return substr($filename, 0, 1)!='.';
-			};
+		$files = array_diff(scandir($dir), ['..', '.', '.DS_Store']);
+		if ($filter){
+			$files = array_filter($files, $filter);
 		}
-		$files = array_filter($files, $filter);
 		while (count($files)>0){
 			$file = sprintf('%s/%s', $dir, rtrim(array_pop($files), '/'));
 			if (is_dir($file)){
