@@ -1,0 +1,16 @@
+#!/usr/bin/env php
+<?php
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Gyokuto\Build;
+
+try {
+  $build = new Build();
+  $build->run();
+}
+catch (Exception $e) {
+  echo $e->getMessage();
+  exit(0);
+}
+
+exit(1);

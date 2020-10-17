@@ -23,7 +23,7 @@ Directories in this application:
 - `public_html` (default)
   - Contains final built output when "build" or "watch" commands are used. Change this with the `output_dir` option.
 - `templates` (default)
-  - Twig templates that are used to
+  - Twig templates that are used to render content.
 - `config` (optional)
   - YAML files containing configuration options or global variables.
 - `src`
@@ -63,7 +63,7 @@ The final path of this page, which can be used directly in a template.
 
 Pages which would output with a filename of `index.html` are given the path of their parent directory without this filename e.g. file `/blog/index.html` would have `/blog` as its value for `path`.
 
-### level
+### level
 
 An integer indicating the level of the page in the site directory structure. Index pages (as above) are given the level of their parent directory. For example:
 

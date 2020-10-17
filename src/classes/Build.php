@@ -2,64 +2,185 @@
 
 namespace Gyokuto;
 
-use RuntimeException;
+use Exception;
+use Twig\Environment;
+use Twig\Extension\StringLoaderExtension;
+use Twig\Extra\Markdown\DefaultMarkdown;
+use Twig\Extra\Markdown\MarkdownExtension;
+use Twig\Extra\Markdown\MarkdownRuntime;
+use Twig\Loader\ChainLoader;
+use Twig\Loader\FilesystemLoader;
+use Twig\RuntimeLoader\RuntimeLoaderInterface;
 
 class Build {
 	private const ENV_CONTENT_DIR = 'GYOKUTO_CONTENT_DIR';
 	private const ENV_OUTPUT_DIR = 'GYOKUTO_OUTPUT_DIR';
 	private const ENV_TEMP_DIR = 'GYOKUTO_TEMP_DIR';
-	private $content_dir = '';
-	private $output_dir = '';
-	private $temp_dir = '';
+	private const ENV_TEMPLATE_DIR = 'GYOKUTO_TEMPLATE_DIR';
+	private const TEMPLATE_DIR_BUILTIN = '../templates';
+	private const TEMPLATE_DIR_USER_DEFAULT = 'templates';
+	private $content_dir = 'content';
+	private $output_dir = 'www';
+	private $temp_dir = '.gyokuto/tmp';
+	/**
+	 * @var Environment
+	 */
+	private $twig;
+	/**
+	 * @var array
+	 */
+	private $build_metadata;
 
 	public function __construct(){
-		$this->content_dir = getenv(self::ENV_CONTENT_DIR) ?? './content';
-		$this->output_dir = getenv(self::ENV_OUTPUT_DIR) ?? './www';
-		$this->temp_dir = getenv(self::ENV_TEMP_DIR) ?? sprintf('%s/%s', sys_get_temp_dir(), uniqid('gyokuto_', true));
+		if (getenv(self::ENV_CONTENT_DIR)){
+			$this->content_dir = getenv(self::ENV_CONTENT_DIR);
+		}
+		if (getenv(self::ENV_OUTPUT_DIR)){
+			$this->output_dir = getenv(self::ENV_OUTPUT_DIR);
+		}
+		$temp_dir = getenv(self::ENV_TEMP_DIR);
+		if ($temp_dir){
+			$this->temp_dir = $temp_dir;
+		}
 	}
 
 	/**
 	 * Begins a build run
 	 */
-	public function run(){
-		$this->log("Build starting");
-		$this->validateBuild()
-			->indexContentFiles();
+	public function run(): bool{
+		Utils::getLogger()
+			->info('Build starting');
+		try {
+			$this->twig = $this->getTwigEnvironment();
+			Utils::getLogger()
+				->info('Using content dir', [$this->getContentDir()]);
+			$content_files = ContentFileList::createFromDirectory($this->content_dir);
+			if ($content_files->count()===0){
+				Utils::getLogger()
+					->warning('No content files found');
+
+				return true;
+			}
+			Utils::getLogger()
+				->info($content_files->count().' content files found');
+
+			$this->build_metadata = $content_files->compileMetadata($this);
+			$this->processContentFiles($content_files);
+
+			Utils::deleteDir($this->output_dir);
+			rename($this->getTempDir(), $this->output_dir);
+
+			$status = true;
+		}
+		catch (Exception $exception){
+			Utils::getLogger()
+				->error('Error in build', [$exception->getFile(), $exception->getLine(), $exception->getMessage()]);
+
+			$status = false;
+		}
+		$this->cleanup();
+		return $status;
 	}
 
-	private function log(string $string){
-		printf("%s\n", $string);
-	}
+	private function getTwigEnvironment(): Environment{
+		// This is the application template folder.
+		$loaders = [
+			new FilesystemLoader(__DIR__.'/'.self::TEMPLATE_DIR_BUILTIN),
+		];
 
-	private function indexContentFiles(){
-
-	}
-
-	private function validateBuild(){
-		// Check we can begin the run at all
-		$errors = [];
-		if (!is_dir($this->content_dir)){
-			$errors[] = 'Content directory is not valid';
+		// This is the user template folder.
+		// We don't actually need to have one.
+		$template_dir_user = getenv(self::ENV_TEMPLATE_DIR);
+		if (!$template_dir_user){
+			$template_dir_user = self::TEMPLATE_DIR_USER_DEFAULT;
 		}
-		if (!is_dir($this->output_dir)){
-			$errors[] = 'Output directory is not valid';
-		}
-		elseif (!is_writable($this->output_dir)) {
-			$errors[] = 'Output directory cannot be written to';
-		}
-		if (!empty($errors)){
-			throw new RuntimeException('Build was not properly configured: '.implode(', ', $errors));
+		if (is_dir($template_dir_user)){
+			array_unshift($loaders, new FilesystemLoader($template_dir_user));
 		}
 
-		return $this;
+		Utils::getLogger()
+			->debug('Using twig loaders', $loaders);
+
+		// Chain them together
+		$loader = new ChainLoader($loaders);
+
+		// Create the Twig environment
+		$twig = new Environment($loader, [
+			'autoescape' => false,
+			'strict_variables' => true,
+			'auto_reload' => true,
+//			'cache' => $this->config['cache_dir'].'/twig',
+		]);
+
+		$twig->addRuntimeLoader(new class implements RuntimeLoaderInterface {
+			public function load($class){
+				if (MarkdownRuntime::class===$class){
+					return new MarkdownRuntime(new DefaultMarkdown());
+				}
+				return null;
+			}
+		});
+
+		// We use the string loader extension to parse Twig in markdown body.
+		$twig->addExtension(new StringLoaderExtension());
+		$twig->addExtension(new MarkdownExtension());
+//		// Add a function for making galleries.
+//		$twig->addFunction(new TwigFunction('gyokuto_gallery', [
+//			self::class,
+//			'makeGallery',
+//		], ['needs_context' => true]));
+
+		return $twig;
 	}
 
 	/**
 	 * Cleans up a run, removing all temp files
 	 */
 	private function cleanup(){
-		if (is_dir($this->temp_dir)){
-			unlink($this->temp_dir);
+		if (is_dir($this->getTempDir())){
+			Utils::deleteDir($this->getTempDir());
+			Utils::getLogger()->debug('Deleted temp dir');
 		}
 	}
+
+	/**
+	 * @return Environment
+	 */
+	public function getTwig(): Environment{
+		return $this->twig;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getBuildMetadata(): array{
+		return $this->build_metadata;
+	}
+
+	private function processContentFiles(ContentFileList $content_files){
+		while (false !== ($file = $content_files->popType(ContentFile::TYPE_COPY))) {
+			$file->process($this);
+		}
+		while (false !== ($file = $content_files->popType(ContentFile::TYPE_PARSE))) {
+			$file->process($this);
+		}
+	}
+
+	/**
+	 * @return array|false|string
+	 */
+	public function getContentDir(){
+		return realpath($this->content_dir);
+	}
+
+	/**
+	 * @return array|string
+	 */
+	public function getTempDir(){
+		if (!is_dir($this->temp_dir)) {
+			mkdir($this->temp_dir, 0755, true);
+		}
+		return realpath($this->temp_dir);
+	}
+
 }
