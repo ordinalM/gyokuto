@@ -40,6 +40,12 @@ class ContentFile {
 
 			return;
 		}
+		if (!empty($this->getMeta()['draft'])){
+			Utils::getLogger()
+				->debug('Skipping draft file', $this->getMeta());
+
+			return;
+		}
 		$html = $this->render($build);
 		file_put_contents($target_filename, $html);
 		Utils::getLogger()
@@ -60,28 +66,6 @@ class ContentFile {
 
 	public static function filenameIsParsable($filename){
 		return preg_match('/\.(md|markdown)$/', $filename);
-	}
-
-	private function render(Build $build): string{
-		$page_params = [
-			'current_page' => $this->getBasePageData($build),
-			'options' => $build->getOptions(),
-		];
-		$page_params += $build->getBuildMetadata();
-
-		// Render markdown content, using Twig content filter first
-		Utils::getLogger()
-			->debug('Rendering markdown', [$this->filename]);
-		$page_params['current_page']['content'] = $build->getTwig()
-			->render('_convert_twig_in_content.twig', $page_params);
-
-		// Apply page template
-		return $build->getTwig()
-			->render($this->getTemplate(), $page_params);
-	}
-
-	private function getTemplate(): string{
-		return $this->getMeta()['template'] ?? 'default.twig';
 	}
 
 	/**
@@ -125,6 +109,32 @@ class ContentFile {
 		return $title;
 	}
 
+	private function render(Build $build): string{
+		$page_params = [
+			'current_page' => $this->getBasePageData($build),
+			'options' => $build->getOptions(),
+		];
+		$page_params += $build->getBuildMetadata();
+
+		// Render markdown content, using Twig content filter first
+		Utils::getLogger()
+			->debug('Rendering markdown', [$this->filename]);
+		$page_params['current_page']['content'] = $build->getTwig()
+			->render('_convert_twig_in_content.twig', $page_params);
+
+		// Apply page template
+		return $build->getTwig()
+			->render($this->getTemplate(), $page_params);
+	}
+
+	public function getBasePageData(Build $build){
+		return [
+			'content' => $this->getMarkdown(),
+			'meta' => $this->getMeta(),
+			'path' => $this->getPath($build),
+		];
+	}
+
 	/**
 	 * @return string
 	 */
@@ -136,13 +146,8 @@ class ContentFile {
 		return $this->markdown;
 	}
 
-	public function getBasePageData(Build $build){
-		return
-			[
-				'content' => $this->getMarkdown(),
-				'meta' => $this->getMeta(),
-				'path' => $this->getPath($build),
-			];
+	private function getTemplate(): string{
+		return $this->getMeta()['template'] ?? 'default.twig';
 	}
 
 }
