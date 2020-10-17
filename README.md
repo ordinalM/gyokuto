@@ -5,3 +5,9 @@
 ```
 composer require ordinalm/gyokuto dev-master
 ```
+
+It is advised to add
+```
+/.gyokuto/
+```
+to your `.gitignore`.

@@ -69,6 +69,7 @@ class ContentFile {
 				'meta' => $this->getMeta(),
 				'path' => $this->getPath($build),
 			],
+			'options' => $build->getOptions(),
 		];
 		$page_params += $build->getBuildMetadata();
 
