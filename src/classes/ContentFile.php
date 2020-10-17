@@ -64,11 +64,7 @@ class ContentFile {
 
 	private function render(Build $build): string{
 		$page_params = [
-			'current_page' => [
-				'content' => $this->getMarkdown(),
-				'meta' => $this->getMeta(),
-				'path' => $this->getPath($build),
-			],
+			'current_page' => $this->getBasePageData($build),
 			'options' => $build->getOptions(),
 		];
 		$page_params += $build->getBuildMetadata();
@@ -84,15 +80,19 @@ class ContentFile {
 			->render($this->getTemplate(), $page_params);
 	}
 
+	private function getTemplate(): string{
+		return $this->getMeta()['template'] ?? 'default.twig';
+	}
+
 	/**
-	 * @return string
+	 * @return array
 	 */
-	private function getMarkdown(): string{
-		if ($this->markdown===false){
+	public function getMeta(): array{
+		if ($this->meta===false){
 			$this->readAndSplit();
 		}
 
-		return $this->markdown;
+		return $this->meta;
 	}
 
 	private function readAndSplit(): ContentFile{
@@ -126,18 +126,23 @@ class ContentFile {
 	}
 
 	/**
-	 * @return array
+	 * @return string
 	 */
-	public function getMeta(): array{
-		if ($this->meta===false){
+	private function getMarkdown(): string{
+		if ($this->markdown===false){
 			$this->readAndSplit();
 		}
 
-		return $this->meta;
+		return $this->markdown;
 	}
 
-	private function getTemplate(): string{
-		return $this->getMeta()['template'] ?? 'default.twig';
+	public function getBasePageData(Build $build){
+		return
+			[
+				'content' => $this->getMarkdown(),
+				'meta' => $this->getMeta(),
+				'path' => $this->getPath($build),
+			];
 	}
 
 }

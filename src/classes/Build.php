@@ -51,6 +51,7 @@ class Build {
 	 * Begins a build run
 	 */
 	public function run(): bool{
+		$start_time = microtime(true);
 		Utils::getLogger()
 			->info('Build starting');
 		try {
@@ -82,6 +83,7 @@ class Build {
 			$status = false;
 		}
 		$this->cleanup();
+		Utils::getLogger()->info('Finished in ' . (microtime(true) - $start_time) . ' seconds');
 
 		return $status;
 	}

@@ -51,11 +51,14 @@ class ContentFileList {
 		$page_index = [];
 		$pages_by_path = [];
 		$keys_to_index = $build->getOptions()['index'] ?? [];
+		if (count($keys_to_index) > 0) {
+			Utils::getLogger()->debug('Indexing metadata keys', $keys_to_index);
+		}
 		foreach ($this->filenames[ContentFile::TYPE_PARSE] as $filename){
 			$content_file = new ContentFile($filename);
 			$page_meta = $content_file->getMeta();
 			$page_path = $content_file->getPath($build);
-			$pages_by_path[$page_path] = $page_meta + ['path' => $page_path];
+			$pages_by_path[$page_path] = $content_file->getBasePageData($build);
 			if (!empty($keys_to_index)){
 				foreach ($keys_to_index as $k){
 					if (isset($page_meta[$k])){
