@@ -7,14 +7,14 @@
 		}
 	],
 	"license": "MIT",
-	"version": 0.1,
 	"require": {
 		"twig/twig": "^3.0",
 		"symfony/yaml": "^5.0",
 		"twig/markdown-extra": "^3.0",
 		"monolog/monolog": "^2.1",
 		"ext-gd": "*",
-		"php": "^7.3"
+		"php": "^7.3",
+		"michelf/php-markdown": "^1.9"
 	},
 	"autoload": {
 		"psr-4": {
