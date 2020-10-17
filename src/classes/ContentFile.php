@@ -29,8 +29,8 @@ class ContentFile {
 	public function process(Build $build): void{
 		$target_filename = $this->getBuildFilename($build);
 		if (!is_dir(dirname($target_filename))){
-			if (false===mkdir(dirname($target_filename), 0755, true)) {
-				throw new RuntimeException('Could not create target dir ' . dirname($target_filename));
+			if (false===mkdir(dirname($target_filename), 0755, true)){
+				throw new RuntimeException('Could not create target dir '.dirname($target_filename));
 			}
 		}
 		if (!$this->isParsable()){
@@ -72,8 +72,6 @@ class ContentFile {
 		];
 		$page_params += $build->getBuildMetadata();
 
-		var_dump([ 'page params', $page_params]);
-
 		// Render markdown content, using Twig content filter first
 		Utils::getLogger()
 			->debug('Rendering markdown');
@@ -110,15 +108,20 @@ class ContentFile {
 			$this->markdown = $raw;
 		}
 		$this->meta += [
-			'created' => filectime($this->filename),
+			'date' => filemtime($this->filename),
 			'title' => $this->createTitle(),
 		];
 
 		return $this;
 	}
 
-	private function getTemplate(): string{
-		return $this->getMeta()['template'] ?? 'default.twig';
+	private function createTitle(){
+		$title = basename($this->filename);
+		$title = preg_replace('/\.[^\.]+$/', '', $title);
+		$title = preg_replace('/[-_]+/', ' ', $title);
+		$title = trim($title);
+
+		return $title;
 	}
 
 	/**
@@ -132,12 +135,8 @@ class ContentFile {
 		return $this->meta;
 	}
 
-	private function createTitle(){
-		$title = basename($this->filename);
-		$title = preg_replace('/\.[^\.]+$/', '', $title);
-		$title = preg_replace('/[-_]+/', ' ', $title);
-		$title = trim($title);
-		return $title;
+	private function getTemplate(): string{
+		return $this->getMeta()['template'] ?? 'default.twig';
 	}
 
 }

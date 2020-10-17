@@ -3,6 +3,7 @@
 namespace Gyokuto;
 
 use Exception;
+use Symfony\Component\Yaml\Yaml;
 use Twig\Environment;
 use Twig\Extension\StringLoaderExtension;
 use Twig\Extra\Markdown\DefaultMarkdown;
@@ -22,6 +23,8 @@ class Build {
 	private $content_dir = 'content';
 	private $output_dir = 'www';
 	private $temp_dir = '.gyokuto/tmp';
+	private $options_file = 'gyokuto.yml';
+	private $options;
 	/**
 	 * @var Environment
 	 */
@@ -79,6 +82,7 @@ class Build {
 			$status = false;
 		}
 		$this->cleanup();
+
 		return $status;
 	}
 
@@ -117,6 +121,7 @@ class Build {
 				if (MarkdownRuntime::class===$class){
 					return new MarkdownRuntime(new DefaultMarkdown());
 				}
+
 				return null;
 			}
 		});
@@ -134,12 +139,40 @@ class Build {
 	}
 
 	/**
+	 * @return array|false|string
+	 */
+	public function getContentDir(){
+		return realpath($this->content_dir);
+	}
+
+	private function processContentFiles(ContentFileList $content_files){
+		while (false!==($file = $content_files->popType(ContentFile::TYPE_COPY))){
+			$file->process($this);
+		}
+		while (false!==($file = $content_files->popType(ContentFile::TYPE_PARSE))){
+			$file->process($this);
+		}
+	}
+
+	/**
+	 * @return array|string
+	 */
+	public function getTempDir(){
+		if (!is_dir($this->temp_dir)){
+			mkdir($this->temp_dir, 0755, true);
+		}
+
+		return realpath($this->temp_dir);
+	}
+
+	/**
 	 * Cleans up a run, removing all temp files
 	 */
 	private function cleanup(){
 		if (is_dir($this->getTempDir())){
 			Utils::deleteDir($this->getTempDir());
-			Utils::getLogger()->debug('Deleted temp dir');
+			Utils::getLogger()
+				->debug('Deleted temp dir');
 		}
 	}
 
@@ -157,30 +190,21 @@ class Build {
 		return $this->build_metadata;
 	}
 
-	private function processContentFiles(ContentFileList $content_files){
-		while (false !== ($file = $content_files->popType(ContentFile::TYPE_COPY))) {
-			$file->process($this);
-		}
-		while (false !== ($file = $content_files->popType(ContentFile::TYPE_PARSE))) {
-			$file->process($this);
-		}
-	}
-
 	/**
-	 * @return array|false|string
+	 * @return mixed
 	 */
-	public function getContentDir(){
-		return realpath($this->content_dir);
-	}
-
-	/**
-	 * @return array|string
-	 */
-	public function getTempDir(){
-		if (!is_dir($this->temp_dir)) {
-			mkdir($this->temp_dir, 0755, true);
+	public function getOptions(){
+		if (!isset($this->options)){
+			if (is_file($this->options_file)){
+				$this->options = Yaml::parse(file_get_contents($this->options_file));
+				Utils::getLogger()->debug('Read options file', $this->options);
+			}
+			else {
+				$this->options = [];
+			}
 		}
-		return realpath($this->temp_dir);
+
+		return $this->options;
 	}
 
 }
