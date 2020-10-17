@@ -55,7 +55,7 @@ class ContentFileList {
 			$content_file = new ContentFile($filename);
 			$page_meta = $content_file->getMeta();
 			$page_path = $content_file->getPath($build);
-			$pages_by_path[$page_path] = $page_meta;
+			$pages_by_path[$page_path] = $page_meta + ['path' => $page_path];
 			if (!empty($keys_to_index)){
 				foreach ($keys_to_index as $k){
 					if (isset($page_meta[$k])){
