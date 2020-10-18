@@ -2,15 +2,25 @@
 <?php
 require_once 'vendor/autoload.php';
 
+// Use -o /path/to/options/file.yml for a different options file on startup
+// Use -v1 for verbose output
+
+$options = getopt('o:v:');
+
 use Gyokuto\Build;
+use Gyokuto\Utils;
+use Monolog\Logger;
 
 try {
-  $build = new Build();
+  if ($options['v']) {
+    Utils::setLogLevel(Logger::DEBUG);
+  }
+	$build = new Build($options['o'] ?? null);
   $build->run();
 }
 catch (Exception $e) {
   echo $e->getMessage();
-  exit(0);
+  exit(1);
 }
 
-exit(1);
+exit(0);
