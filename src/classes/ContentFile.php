@@ -15,6 +15,7 @@ class ContentFile {
 	private const KEY_CONTENT = 'content';
 	private const KEY_CURRENT_PAGE = 'current_page';
 	private const KEY_OPTIONS = 'options';
+	private const KEY_PATH = 'path';
 
 	private $filename;
 	/**
@@ -31,6 +32,45 @@ class ContentFile {
 			throw new RuntimeException('Bad filename '.$filename);
 		}
 		$this->filename = $filename;
+		$this->readAndSplit();
+	}
+
+	private function readAndSplit(): ContentFile{
+		if (!$this->isParsable()){
+			return $this;
+		}
+		$raw = file_get_contents($this->filename);
+		if (preg_match('/^---\n(.+?)\n---\n\s*(.*)\s*$/s', $raw, $matches)){
+			$this->meta = Yaml::parse($matches[1]);
+			$this->markdown = $matches[2];
+		}
+		else {
+			$this->meta = [];
+			$this->markdown = $raw;
+		}
+		$this->meta += [
+			self::KEY_META_DATE => filemtime($this->filename),
+			self::KEY_META_TITLE => $this->createTitle(),
+		];
+
+		return $this;
+	}
+
+	private function isParsable(): bool{
+		return self::filenameIsParsable($this->filename);
+	}
+
+	public static function filenameIsParsable($filename): bool{
+		return preg_match('/\.(md|markdown)$/', $filename);
+	}
+
+	private function createTitle(){
+		$title = basename($this->filename);
+		$title = preg_replace('/\.[^.]+$/', '', $title);
+		$title = preg_replace('/[-_]+/', ' ', $title);
+		$title = trim($title);
+
+		return $title;
 	}
 
 	public function process(Build $build): void{
@@ -70,61 +110,27 @@ class ContentFile {
 	 * @return string
 	 */
 	public function getPath(Build $build, bool $strip_index = true){
-		$path = preg_replace('/\.(md|markdown)$/', '.html', $this->filename);
-		if ($strip_index){
-			$path = preg_replace('/index\.html$/', '', $path);
+		// If path metadata value is set, just use that
+		if (empty($this->meta[self::KEY_PATH])){
+			$path = preg_replace('/\.(md|markdown)$/', '.html', $this->filename);
+			if ($strip_index){
+				$path = preg_replace('/index\.html$/', '', $path);
+			}
+			$path = str_replace($build->getContentDir(), '', $path);
+		}
+		else {
+			$path = $this->meta[self::KEY_PATH];
 		}
 
-		return '/'.ltrim(str_replace($build->getContentDir(), '', $path), '/');
-	}
-
-	private function isParsable(): bool{
-		return self::filenameIsParsable($this->filename);
-	}
-
-	public static function filenameIsParsable($filename): bool{
-		return preg_match('/\.(md|markdown)$/', $filename);
+		return '/'.ltrim($path, '/');
 	}
 
 	/**
 	 * @return array
 	 */
 	public function getMeta(): array{
-		if ($this->meta===false){
-			$this->readAndSplit();
-		}
 
 		return $this->meta;
-	}
-
-	private function readAndSplit(): ContentFile{
-		if (!$this->isParsable()){
-			throw new RuntimeException('Tried to parse a content file that is not parsable '.$this->filename);
-		}
-		$raw = file_get_contents($this->filename);
-		if (preg_match('/^---\n(.+?)\n---\n\s*(.*)\s*$/s', $raw, $matches)){
-			$this->meta = Yaml::parse($matches[1]);
-			$this->markdown = $matches[2];
-		}
-		else {
-			$this->meta = [];
-			$this->markdown = $raw;
-		}
-		$this->meta += [
-			self::KEY_META_DATE => filemtime($this->filename),
-			self::KEY_META_TITLE => $this->createTitle(),
-		];
-
-		return $this;
-	}
-
-	private function createTitle(){
-		$title = basename($this->filename);
-		$title = preg_replace('/\.[^.]+$/', '', $title);
-		$title = preg_replace('/[-_]+/', ' ', $title);
-		$title = trim($title);
-
-		return $title;
 	}
 
 	private function render(Build $build): string{
@@ -137,7 +143,7 @@ class ContentFile {
 
 		// Render markdown content, using Twig content filter first
 		Utils::getLogger()
-			->debug('Rendering markdown', [$this->filename]);
+			->debug('Rendering', $this->getMeta());
 
 		$page_params[self::KEY_CURRENT_PAGE][self::KEY_CONTENT] = $build->getTwig()
 			->render('_convert_twig_in_content.twig', $page_params);
@@ -157,7 +163,7 @@ class ContentFile {
 	public function getBasePageData(Build $build){
 		return [
 			self::KEY_META => $this->getMeta(),
-			'path' => $this->getPath($build),
+			self::KEY_PATH => $this->getPath($build),
 		];
 	}
 
