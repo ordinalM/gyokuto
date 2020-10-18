@@ -47,37 +47,7 @@ class Build {
 		$this->content_dir = $this->options[self::OPTION_CONTENT_DIR] ?? $this->content_dir;
 		$this->output_dir = $this->options[self::OPTION_OUTPUT_DIR] ?? $this->output_dir;
 		$this->temp_dir = $this->options[self::OPTION_TEMP_DIR] ?? $this->temp_dir;
-	}
-
-	/**
-	 * Begins a build run
-	 */
-	public function run(): bool{
-		Utils::getLogger()
-			->info('Starting build');
-		try {
-			$this->twig = $this->getTwigEnvironment();
-
-			$content_files = ContentFileList::createFromDirectory($this->content_dir);
-
-			$this->build_metadata = $content_files->compileMetadata($this);
-			$content_files->process($this);
-
-			$this->moveTempToOutput();
-
-			$status = true;
-		}
-		catch (Exception $exception){
-			Utils::getLogger()
-				->error('Error in build', [$exception->getFile(), $exception->getLine(), $exception->getMessage()]);
-
-			$status = false;
-		}
-		$this->cleanup();
-		Utils::getLogger()
-			->info('Finished build');
-
-		return $status;
+		$this->twig = $this->getTwigEnvironment();
 	}
 
 	private function getTwigEnvironment(): Environment{
@@ -135,6 +105,42 @@ class Build {
 	}
 
 	/**
+	 * Begins a build run
+	 */
+	public function run(): bool{
+		Utils::getLogger()
+			->info('Starting build');
+		try {
+			$content_files = ContentFileList::createFromDirectory($this->content_dir);
+
+			$this->build_metadata = $content_files->compileMetadata($this);
+			$content_files->process($this);
+
+			$this->moveTempToOutput();
+
+			$status = true;
+		}
+		catch (Exception $exception){
+			Utils::getLogger()
+				->error('Error in build', [$exception->getFile(), $exception->getLine(), $exception->getMessage()]);
+
+			$status = false;
+		}
+		$this->cleanup();
+		Utils::getLogger()
+			->info('Finished build');
+
+		return $status;
+	}
+
+	private function moveTempToOutput(){
+		Utils::getLogger()
+			->info('Moving temporary build directory to '.realpath($this->output_dir));
+		Utils::deleteDir($this->output_dir);
+		rename($this->getTempDir(), $this->output_dir);
+	}
+
+	/**
 	 * @return array|string
 	 */
 	public function getTempDir(){
@@ -171,6 +177,17 @@ class Build {
 	}
 
 	/**
+	 * @param Environment $twig
+	 *
+	 * @return Build
+	 */
+	public function setTwig(Environment $twig): Build{
+		$this->twig = $twig;
+
+		return $this;
+	}
+
+	/**
 	 * @return array
 	 */
 	public function getBuildMetadata(): array{
@@ -182,12 +199,6 @@ class Build {
 	 */
 	public function getOptions(){
 		return $this->options;
-	}
-
-	private function moveTempToOutput(){
-		Utils::getLogger()->info('Moving temporary build directory to ' . realpath($this->output_dir));
-		Utils::deleteDir($this->output_dir);
-		rename($this->getTempDir(), $this->output_dir);
 	}
 
 }
