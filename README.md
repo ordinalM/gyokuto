@@ -1,7 +1,14 @@
 # Gyokuto - a PHP static site generator
 
+## Overview
+
+Gyokuto uses PHP and Twig to render local Markdown content to produce a static site. It can be used as is, or combined with other PHP modules.
+
 ## Installation
 
+### Composer (recommended)
+
+In your project, install the module with:
 ```
 composer require ordinalm/gyokuto dev-master
 ```
@@ -12,7 +19,6 @@ It is advised to add
 ```
 to your `.gitignore`.
 
-## Building a site
 
 ```
 vendor/ordinalm/gyokuto/bin/build

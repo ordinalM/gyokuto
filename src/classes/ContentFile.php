@@ -8,6 +8,7 @@ use Symfony\Component\Yaml\Yaml;
 class ContentFile {
 	public const TYPE_PARSE = 0;
 	public const TYPE_COPY = 1;
+	public const META_DRAFT = 'draft';
 
 	private $filename;
 	/**
@@ -40,7 +41,7 @@ class ContentFile {
 
 			return;
 		}
-		if (!empty($this->getMeta()['draft'])){
+		if (!empty($this->getMeta()[self::META_DRAFT])){
 			Utils::getLogger()
 				->debug('Skipping draft file', $this->getMeta());
 
@@ -53,11 +54,22 @@ class ContentFile {
 	}
 
 	private function getBuildFilename(Build $build){
-		return $build->getTempDir().$this->getPath($build);
+		return $build->getTempDir().$this->getPath($build, false);
 	}
 
-	public function getPath(Build $build){
-		return '/'.ltrim(str_replace($build->getContentDir(), '', preg_replace('/\.(md|markdown)$/', '.html', $this->filename)), '/');
+	/**
+	 * @param Build $build
+	 * @param bool  $strip_index
+	 *
+	 * @return string
+	 */
+	public function getPath(Build $build, bool $strip_index = true){
+		$path = preg_replace('/\.(md|markdown)$/', '.html', $this->filename);
+		if ($strip_index){
+			$path = preg_replace('/index\.html$/', '', $path);
+		}
+
+		return '/'.ltrim(str_replace($build->getContentDir(), '', $path), '/');
 	}
 
 	private function isParsable(){
@@ -102,7 +114,7 @@ class ContentFile {
 
 	private function createTitle(){
 		$title = basename($this->filename);
-		$title = preg_replace('/\.[^\.]+$/', '', $title);
+		$title = preg_replace('/\.[^.]+$/', '', $title);
 		$title = preg_replace('/[-_]+/', ' ', $title);
 		$title = trim($title);
 
@@ -119,6 +131,7 @@ class ContentFile {
 		// Render markdown content, using Twig content filter first
 		Utils::getLogger()
 			->debug('Rendering markdown', [$this->filename]);
+
 		$page_params['current_page']['content'] = $build->getTwig()
 			->render('_convert_twig_in_content.twig', $page_params);
 
