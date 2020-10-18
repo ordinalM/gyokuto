@@ -60,6 +60,10 @@ class ContentFileList {
 		foreach ($this->filenames[ContentFile::TYPE_PARSE] as $filename){
 			$content_file = new ContentFile($filename);
 			$page_meta = $content_file->getMeta();
+			// Don't index anything in draft pages
+			if ($page_meta[ContentFile::META_DRAFT]) {
+				continue;
+			}
 			$page_path = $content_file->getPath($build);
 			$pages_by_path[$page_path] = $content_file->getBasePageData($build);
 			if (!empty($keys_to_index)){
