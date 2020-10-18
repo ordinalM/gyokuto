@@ -57,10 +57,12 @@ See below for the values that are automatically available to Twig.
 
 #### Special metadata variables
 
+The following metadata variables have special meaning to Gyokuto.
+
 - `draft` - if set to a value evaluating to `true`, this page will _not_ be copied over or included in any page lists or indexes.
 - `template` - this determines the template used to process this page. If not set, the value is `default.twig`.
 - `path` - if set, the page will be output to this path relative to the root of the output directory. This can also change the file extension e.g. `path: "sitemap.xml"`
-
+- `hidden` - if set to a value evaluating to `true`, the page will be created in output, but won't be included in the indexing process, so will not appear in either `index` or `pages` lists (see Twig variables, below).
 
 ### Build process
 

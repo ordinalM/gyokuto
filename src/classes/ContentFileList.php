@@ -64,7 +64,7 @@ class ContentFileList {
 			$content_file = new ContentFile($filename);
 			$page_meta = $content_file->getMeta();
 			// Don't index anything in draft pages
-			if ($page_meta[ContentFile::META_DRAFT]){
+			if ($page_meta[ContentFile::KEY_META_DRAFT] || $page_meta[ContentFile::KEY_META_HIDDEN]){
 				continue;
 			}
 			$page_path = $content_file->getPath($build);

@@ -8,7 +8,8 @@ use Symfony\Component\Yaml\Yaml;
 class ContentFile {
 	public const TYPE_PARSE = 0;
 	public const TYPE_COPY = 1;
-	public const META_DRAFT = 'draft';
+	public const KEY_META_DRAFT = 'draft';
+	public const KEY_META_HIDDEN = 'hidden';
 	public const KEY_META = 'meta';
 	public const KEY_META_DATE = 'date';
 	private const KEY_META_TITLE = 'title';
@@ -87,7 +88,7 @@ class ContentFile {
 
 			return;
 		}
-		if (!empty($this->getMeta()[self::META_DRAFT])){
+		if ($this->getMeta()[self::KEY_META_DRAFT]){
 			Utils::getLogger()
 				->debug('Skipping draft file', $this->getMeta());
 
@@ -110,7 +111,7 @@ class ContentFile {
 	 * @return string
 	 */
 	public function getPath(Build $build, bool $strip_index = true){
-		// If path metadata value is set, just use that
+		// If path metadata value is set, just use that, otherwise calculate output path based on the content filename.
 		if (empty($this->meta[self::KEY_PATH])){
 			$path = preg_replace('/\.(md|markdown)$/', '.html', $this->filename);
 			if ($strip_index){
