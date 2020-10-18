@@ -137,6 +137,7 @@ class Build {
 		Utils::getLogger()
 			->info('Moving temporary build directory to '.realpath($this->output_dir));
 		Utils::deleteDir($this->output_dir);
+
 		rename($this->getTempDir(), $this->output_dir);
 	}
 

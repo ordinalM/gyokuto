@@ -35,6 +35,9 @@ class Utils {
 	 */
 	public static function deleteDir(string $dir): bool{
 		$dir = realpath($dir);
+		if (!is_dir($dir)) {
+			return true;
+		}
 
 		$files = Utils::getDirectoryContents($dir);
 
