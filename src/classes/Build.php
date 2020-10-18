@@ -47,12 +47,19 @@ class Build {
 		$this->content_dir = $this->options[self::OPTION_CONTENT_DIR] ?? $this->content_dir;
 		$this->output_dir = $this->options[self::OPTION_OUTPUT_DIR] ?? $this->output_dir;
 		$this->temp_dir = $this->options[self::OPTION_TEMP_DIR] ?? $this->temp_dir;
-		$this->twig = $this->getTwigEnvironment();
+		$this->twig = $this->createTwigEnvironment();
 	}
 
-	private function getTwigEnvironment(): Environment{
+	/**
+	 * Sets up the default Twig environment for the build.
+	 *
+	 * This is done when initialising the object, so that it can be modified by a user before actually running a build.
+	 *
+	 * @return Environment
+	 */
+	private function createTwigEnvironment(): Environment{
 		Utils::getLogger()
-			->info('Loading Twig environment');
+			->info('Creating Twig environment');
 
 		// Template loading
 		$loaders = [];
@@ -78,7 +85,6 @@ class Build {
 			'autoescape' => false,
 			'strict_variables' => true,
 			'auto_reload' => true,
-//			'cache' => $this->config['cache_dir'].'/twig',
 		]);
 
 		// Add a loader for the markdown runtime

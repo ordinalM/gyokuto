@@ -17,13 +17,18 @@ class ContentFile {
 	private const KEY_CURRENT_PAGE = 'current_page';
 	private const KEY_OPTIONS = 'options';
 	private const KEY_PATH = 'path';
+	private const REGEX_MARKDOWN_EXTENSION = '/\.(md|markdown)$/';
 
 	private $filename;
 	/**
+	 * Holds the meta array for this content file, if any.
+	 *
 	 * @var false|array
 	 */
 	private $meta = false;
 	/**
+	 * Holds the raw markdown text for this content file, if any.
+	 *
 	 * @var false|string
 	 */
 	private $markdown = false;
@@ -36,6 +41,11 @@ class ContentFile {
 		$this->readAndSplit();
 	}
 
+	/**
+	 * Processes the content file, pulling metadata and raw markdown.
+	 *
+	 * @return ContentFile
+	 */
 	private function readAndSplit(): ContentFile{
 		if (!$this->isParsable()){
 			return $this;
@@ -51,7 +61,7 @@ class ContentFile {
 		}
 		$this->meta += [
 			self::KEY_META_DATE => filemtime($this->filename),
-			self::KEY_META_TITLE => $this->createTitle(),
+			self::KEY_META_TITLE => $this->getTitleFromFilename(),
 		];
 
 		return $this;
@@ -62,10 +72,15 @@ class ContentFile {
 	}
 
 	public static function filenameIsParsable($filename): bool{
-		return preg_match('/\.(md|markdown)$/', $filename);
+		return preg_match(self::REGEX_MARKDOWN_EXTENSION, $filename);
 	}
 
-	private function createTitle(){
+	/**
+	 * Generates a title from the filename, in cases where there is no title metadata
+	 *
+	 * @return string
+	 */
+	private function getTitleFromFilename(): string{
 		$title = basename($this->filename);
 		$title = preg_replace('/\.[^.]+$/', '', $title);
 		$title = preg_replace('/[-_]+/', ' ', $title);
@@ -74,6 +89,9 @@ class ContentFile {
 		return $title;
 	}
 
+	/**
+	 * @param Build $build
+	 */
 	public function process(Build $build): void{
 		$target_filename = $this->getBuildFilename($build);
 		if (!is_dir(dirname($target_filename))){
@@ -100,7 +118,7 @@ class ContentFile {
 			->debug('Wrote parsed file', [$this->filename, $target_filename]);
 	}
 
-	private function getBuildFilename(Build $build){
+	private function getBuildFilename(Build $build): string{
 		return $build->getTempDir().$this->getPath($build, false);
 	}
 
@@ -110,10 +128,10 @@ class ContentFile {
 	 *
 	 * @return string
 	 */
-	public function getPath(Build $build, bool $strip_index = true){
-		// If path metadata value is set, just use that, otherwise calculate output path based on the content filename.
+	public function getPath(Build $build, bool $strip_index = true): string{
+		// If path metadata value is set, use that, otherwise calculate output path based on the content filename.
 		if (empty($this->meta[self::KEY_PATH])){
-			$path = preg_replace('/\.(md|markdown)$/', '.html', $this->filename);
+			$path = preg_replace(self::REGEX_MARKDOWN_EXTENSION, '.html', $this->filename);
 			if ($strip_index){
 				$path = preg_replace('/index\.html$/', '', $path);
 			}
@@ -161,7 +179,7 @@ class ContentFile {
 	 *
 	 * @return array
 	 */
-	public function getBasePageData(Build $build){
+	public function getBasePageData(Build $build): array{
 		return [
 			self::KEY_META => $this->getMeta(),
 			self::KEY_PATH => $this->getPath($build),
@@ -179,6 +197,9 @@ class ContentFile {
 		return $this->markdown;
 	}
 
+	/**
+	 * @return string
+	 */
 	private function getTemplate(): string{
 		return $this->getMeta()['template'] ?? 'default.twig';
 	}
