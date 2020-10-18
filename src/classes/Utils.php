@@ -7,7 +7,7 @@ use Monolog\Logger;
 use RuntimeException;
 
 class Utils {
-	private static $log_level = Logger::DEBUG;
+	private static $log_level = Logger::INFO;
 
 	public static function getLogger(): Logger{
 		static $logger;
@@ -17,13 +17,6 @@ class Utils {
 		}
 
 		return $logger;
-	}
-
-	/**
-	 * @return int
-	 */
-	public static function getLogLevel(): int{
-		return self::$log_level;
 	}
 
 	/**
@@ -43,7 +36,7 @@ class Utils {
 	public static function deleteDir(string $dir): bool{
 		$dir = realpath($dir);
 
-		$files = array_diff(scandir($dir), ['..', '.']);
+		$files = Utils::getDirectoryContents($dir);
 
 		foreach ($files as $file){
 			$file = $dir.'/'.$file;
@@ -60,6 +53,10 @@ class Utils {
 		}
 
 		return true;
+	}
+
+	public static function getDirectoryContents(string $dir): array{
+		return array_values(array_diff(scandir($dir), ['..', '.']));
 	}
 
 	public static function findFilesRecursive(string $dir, callable $filter = null): array{

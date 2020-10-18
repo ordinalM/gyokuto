@@ -14,16 +14,16 @@ use Twig\Loader\FilesystemLoader;
 use Twig\RuntimeLoader\RuntimeLoaderInterface;
 
 class Build {
-	private const ENV_CONTENT_DIR = 'GYOKUTO_CONTENT_DIR';
-	private const ENV_OUTPUT_DIR = 'GYOKUTO_OUTPUT_DIR';
-	private const ENV_TEMP_DIR = 'GYOKUTO_TEMP_DIR';
-	private const ENV_TEMPLATE_DIR = 'GYOKUTO_TEMPLATE_DIR';
-	private const TEMPLATE_DIR_BUILTIN = '../templates';
-	private const TEMPLATE_DIR_USER_DEFAULT = 'templates';
-	private $content_dir = 'content';
-	private $output_dir = 'www';
-	private $temp_dir = '.gyokuto/tmp';
-	private $options_file = 'gyokuto.yml';
+	private const OPTION_CONTENT_DIR = 'content_dir';
+	private const OPTION_OUTPUT_DIR = 'output_dir';
+	private const OPTION_TEMP_DIR = 'temp_dir';
+	private const OPTION_TEMPLATE_DIR = 'template_dir';
+	private const TEMPLATE_DIR_USER_DEFAULT = './templates';
+	private const TEMPLATE_DIR_BUILTIN = '../templates'; // relative to this file
+	private const OPTIONS_FILE_DEFAULT = './gyokuto.yml';
+	private $content_dir = './content';
+	private $output_dir = './www';
+	private $temp_dir = './.gyokuto-tmp';
 	private $options;
 	/**
 	 * @var Environment
@@ -34,45 +34,36 @@ class Build {
 	 */
 	private $build_metadata;
 
-	public function __construct(){
-		if (getenv(self::ENV_CONTENT_DIR)){
-			$this->content_dir = getenv(self::ENV_CONTENT_DIR);
+	public function __construct(string $options_file = null){
+		$options_file = $options_file ?? self::OPTIONS_FILE_DEFAULT;
+		if (is_file($options_file)){
+			$this->options = Yaml::parse(file_get_contents($options_file));
+			Utils::getLogger()
+				->debug('Read options from file '.realpath($options_file), $this->options);
 		}
-		if (getenv(self::ENV_OUTPUT_DIR)){
-			$this->output_dir = getenv(self::ENV_OUTPUT_DIR);
+		else {
+			$this->options = [];
 		}
-		$temp_dir = getenv(self::ENV_TEMP_DIR);
-		if ($temp_dir){
-			$this->temp_dir = $temp_dir;
-		}
+		$this->content_dir = $this->options[self::OPTION_CONTENT_DIR] ?? $this->content_dir;
+		$this->output_dir = $this->options[self::OPTION_OUTPUT_DIR] ?? $this->output_dir;
+		$this->temp_dir = $this->options[self::OPTION_TEMP_DIR] ?? $this->temp_dir;
 	}
 
 	/**
 	 * Begins a build run
 	 */
 	public function run(): bool{
-		$start_time = microtime(true);
 		Utils::getLogger()
-			->info('Build starting');
+			->info('Starting build');
 		try {
 			$this->twig = $this->getTwigEnvironment();
-			Utils::getLogger()
-				->info('Using content dir', [$this->getContentDir()]);
-			$content_files = ContentFileList::createFromDirectory($this->content_dir);
-			if ($content_files->count()===0){
-				Utils::getLogger()
-					->warning('No content files found');
 
-				return true;
-			}
-			Utils::getLogger()
-				->info($content_files->count().' content files found');
+			$content_files = ContentFileList::createFromDirectory($this->content_dir);
 
 			$this->build_metadata = $content_files->compileMetadata($this);
-			$this->processContentFiles($content_files);
+			$content_files->process($this);
 
-			Utils::deleteDir($this->output_dir);
-			rename($this->getTempDir(), $this->output_dir);
+			$this->moveTempToOutput();
 
 			$status = true;
 		}
@@ -83,41 +74,44 @@ class Build {
 			$status = false;
 		}
 		$this->cleanup();
-		Utils::getLogger()->info('Finished in ' . (microtime(true) - $start_time) . ' seconds');
+		Utils::getLogger()
+			->info('Finished build');
 
 		return $status;
 	}
 
 	private function getTwigEnvironment(): Environment{
-		// This is the application template folder.
-		$loaders = [
-			new FilesystemLoader(__DIR__.'/'.self::TEMPLATE_DIR_BUILTIN),
-		];
+		Utils::getLogger()
+			->info('Loading Twig environment');
+
+		// Template loading
+		$loaders = [];
 
 		// This is the user template folder.
 		// We don't actually need to have one.
-		$template_dir_user = getenv(self::ENV_TEMPLATE_DIR);
-		if (!$template_dir_user){
-			$template_dir_user = self::TEMPLATE_DIR_USER_DEFAULT;
-		}
+		$template_dir_user = $this->options[self::OPTION_TEMPLATE_DIR] ?? self::TEMPLATE_DIR_USER_DEFAULT;
 		if (is_dir($template_dir_user)){
-			array_unshift($loaders, new FilesystemLoader($template_dir_user));
+			// Put the user loader first
+			$loaders[] = new FilesystemLoader($template_dir_user);
+			Utils::getLogger()
+				->debug('Loading user templates from '.realpath($template_dir_user), Utils::getDirectoryContents($template_dir_user));
 		}
 
+		// This is the application template folder.
+		$template_dir_app = __DIR__.'/'.self::TEMPLATE_DIR_BUILTIN;
+		$loaders[] = new FilesystemLoader($template_dir_app);
 		Utils::getLogger()
-			->debug('Using twig loaders', $loaders);
-
-		// Chain them together
-		$loader = new ChainLoader($loaders);
+			->debug('Loading application templates from '.realpath($template_dir_app), Utils::getDirectoryContents($template_dir_app));
 
 		// Create the Twig environment
-		$twig = new Environment($loader, [
+		$twig = new Environment(new ChainLoader($loaders), [
 			'autoescape' => false,
 			'strict_variables' => true,
 			'auto_reload' => true,
 //			'cache' => $this->config['cache_dir'].'/twig',
 		]);
 
+		// Add a loader for the markdown runtime
 		$twig->addRuntimeLoader(new class implements RuntimeLoaderInterface {
 			public function load($class){
 				if (MarkdownRuntime::class===$class){
@@ -138,22 +132,6 @@ class Build {
 //		], ['needs_context' => true]));
 
 		return $twig;
-	}
-
-	/**
-	 * @return array|false|string
-	 */
-	public function getContentDir(){
-		return realpath($this->content_dir);
-	}
-
-	private function processContentFiles(ContentFileList $content_files){
-		while (false!==($file = $content_files->popType(ContentFile::TYPE_COPY))){
-			$file->process($this);
-		}
-		while (false!==($file = $content_files->popType(ContentFile::TYPE_PARSE))){
-			$file->process($this);
-		}
 	}
 
 	/**
@@ -179,6 +157,13 @@ class Build {
 	}
 
 	/**
+	 * @return array|false|string
+	 */
+	public function getContentDir(){
+		return realpath($this->content_dir);
+	}
+
+	/**
 	 * @return Environment
 	 */
 	public function getTwig(): Environment{
@@ -196,17 +181,13 @@ class Build {
 	 * @return mixed
 	 */
 	public function getOptions(){
-		if (!isset($this->options)){
-			if (is_file($this->options_file)){
-				$this->options = Yaml::parse(file_get_contents($this->options_file));
-				Utils::getLogger()->debug('Read options file', $this->options);
-			}
-			else {
-				$this->options = [];
-			}
-		}
-
 		return $this->options;
+	}
+
+	private function moveTempToOutput(){
+		Utils::getLogger()->info('Moving temporary build directory to ' . realpath($this->output_dir));
+		Utils::deleteDir($this->output_dir);
+		rename($this->getTempDir(), $this->output_dir);
 	}
 
 }
