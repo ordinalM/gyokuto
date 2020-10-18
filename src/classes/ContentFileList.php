@@ -50,37 +50,37 @@ class ContentFileList {
 		Utils::getLogger()
 			->info('Indexing page metadata');
 
+		$pages_by_meta = [];
 		$page_index = [];
-		$pages_by_path = [];
 		$keys_to_index = $build->getOptions()['index'] ?? [];
 		if (count($keys_to_index)>0){
 			Utils::getLogger()
-				->debug('Indexing metadata keys', $keys_to_index);
+				->debug('Indexing metadata keys:', $keys_to_index);
 		}
 		foreach ($this->filenames[ContentFile::TYPE_PARSE] as $filename){
 			$content_file = new ContentFile($filename);
 			$page_meta = $content_file->getMeta();
 			// Don't index anything in draft pages
-			if ($page_meta[ContentFile::META_DRAFT]) {
+			if ($page_meta[ContentFile::META_DRAFT]){
 				continue;
 			}
 			$page_path = $content_file->getPath($build);
-			$pages_by_path[$page_path] = $content_file->getBasePageData($build);
-			if (!empty($keys_to_index)){
+			$page_index[$page_path] = $content_file->getBasePageData($build);
+			if (count($keys_to_index)>0){
 				foreach ($keys_to_index as $k){
 					if (isset($page_meta[$k])){
-						if (!isset($page_index[$k])){
-							$page_index[$k] = [];
+						if (!isset($pages_by_meta[$k])){
+							$pages_by_meta[$k] = [];
 						}
 						$v = $page_meta[$k];
 						if (!is_array($v)){
 							$v = [$v];
 						}
 						foreach ($v as $v_sub){
-							if (!isset($page_index[$k][$v_sub])){
-								$page_index[$k][$v_sub] = [];
+							if (!isset($pages_by_meta[$k][$v_sub])){
+								$pages_by_meta[$k][$v_sub] = [];
 							}
-							$page_index[$k][$v_sub][] = $page_path;
+							$pages_by_meta[$k][$v_sub][] = $page_path;
 						}
 					}
 				}
@@ -88,16 +88,19 @@ class ContentFileList {
 		}
 
 		// Sort each index by value of indexed key
-		foreach ($page_index as $k => &$v){
+		foreach ($pages_by_meta as $k => &$v){
 			ksort($v);
 		}
 
-		// Sort pages by descending date
-		uasort($pages_by_path, function ($a, $b){
-			return $b['date']<=>$a['date'];
+		// Sort page index by descending date
+		uasort($page_index, function ($a, $b){
+			return $b['meta']['date']<=>$a['meta']['date'];
 		});
+		Utils::getLogger()
+			->debug('Page list sorted', $page_index);
 
-		return ['index' => $page_index, 'pages' => $pages_by_path];
+		// TODO: replace site metadata indices with constants
+		return ['index' => $pages_by_meta, 'pages' => $page_index];
 	}
 
 	/**
