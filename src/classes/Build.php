@@ -95,11 +95,6 @@ class Build {
 		// We use the string loader extension to parse Twig in markdown body.
 		$twig->addExtension(new StringLoaderExtension());
 		$twig->addExtension(new MarkdownExtension());
-//		// Add a function for making galleries.
-//		$twig->addFunction(new TwigFunction('gyokuto_gallery', [
-//			self::class,
-//			'makeGallery',
-//		], ['needs_context' => true]));
 
 		return $twig;
 	}
