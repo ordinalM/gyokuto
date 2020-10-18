@@ -113,7 +113,7 @@ class Build {
 		try {
 			$content_files = ContentFileList::createFromDirectory($this->content_dir);
 
-			$this->build_metadata = $content_files->compileMetadata($this);
+			$this->build_metadata = $content_files->compileContentMetadata($this);
 			$content_files->process($this);
 
 			$this->moveTempToOutput();

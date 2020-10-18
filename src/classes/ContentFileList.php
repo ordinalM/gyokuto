@@ -5,6 +5,8 @@ namespace Gyokuto;
 use RuntimeException;
 
 class ContentFileList {
+	private const KEY_PAGES_BY_META = 'index';
+	private const KEY_PAGE_INDEX = 'pages';
 	private $filenames = [ContentFile::TYPE_PARSE => [], ContentFile::TYPE_COPY => []];
 
 	public static function createFromDirectory($content_dir): ContentFileList{
@@ -40,13 +42,14 @@ class ContentFileList {
 	}
 
 	/**
-	 * Looks through the content files that exist in this list and compiles their metadata for use by templates
+	 * Looks through the content files that exist in this list and compiles their metadata for use by templates.
+	 * Also provides a master list of pages.
 	 *
 	 * @param Build $build
 	 *
 	 * @return array[]
 	 */
-	public function compileMetadata(Build $build){
+	public function compileContentMetadata(Build $build){
 		Utils::getLogger()
 			->info('Indexing page metadata');
 
@@ -94,13 +97,12 @@ class ContentFileList {
 
 		// Sort page index by descending date
 		uasort($page_index, function ($a, $b){
-			return $b['meta']['date']<=>$a['meta']['date'];
+			return $b[ContentFile::KEY_META][ContentFile::KEY_META_DATE]<=>$a[ContentFile::KEY_META][ContentFile::KEY_META_DATE];
 		});
 		Utils::getLogger()
 			->debug('Page list sorted', $page_index);
 
-		// TODO: replace site metadata indices with constants
-		return ['index' => $pages_by_meta, 'pages' => $page_index];
+		return [self::KEY_PAGES_BY_META => $pages_by_meta, self::KEY_PAGE_INDEX => $page_index];
 	}
 
 	/**

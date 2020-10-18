@@ -9,6 +9,12 @@ class ContentFile {
 	public const TYPE_PARSE = 0;
 	public const TYPE_COPY = 1;
 	public const META_DRAFT = 'draft';
+	public const KEY_META = 'meta';
+	public const KEY_META_DATE = 'date';
+	private const KEY_META_TITLE = 'title';
+	private const KEY_CONTENT = 'content';
+	private const KEY_CURRENT_PAGE = 'current_page';
+	private const KEY_OPTIONS = 'options';
 
 	private $filename;
 	/**
@@ -72,11 +78,11 @@ class ContentFile {
 		return '/'.ltrim(str_replace($build->getContentDir(), '', $path), '/');
 	}
 
-	private function isParsable(){
+	private function isParsable(): bool{
 		return self::filenameIsParsable($this->filename);
 	}
 
-	public static function filenameIsParsable($filename){
+	public static function filenameIsParsable($filename): bool{
 		return preg_match('/\.(md|markdown)$/', $filename);
 	}
 
@@ -105,8 +111,8 @@ class ContentFile {
 			$this->markdown = $raw;
 		}
 		$this->meta += [
-			'date' => filemtime($this->filename),
-			'title' => $this->createTitle(),
+			self::KEY_META_DATE => filemtime($this->filename),
+			self::KEY_META_TITLE => $this->createTitle(),
 		];
 
 		return $this;
@@ -123,16 +129,17 @@ class ContentFile {
 
 	private function render(Build $build): string{
 		$page_params = [
-			'current_page' => $this->getBasePageData($build),
-			'options' => $build->getOptions(),
+			self::KEY_CURRENT_PAGE => $this->getBasePageData($build),
+			self::KEY_OPTIONS => $build->getOptions(),
 		];
+		$page_params[self::KEY_CURRENT_PAGE][self::KEY_CONTENT] = $this->getMarkdown();
 		$page_params += $build->getBuildMetadata();
 
 		// Render markdown content, using Twig content filter first
 		Utils::getLogger()
 			->debug('Rendering markdown', [$this->filename]);
 
-		$page_params['current_page']['content'] = $build->getTwig()
+		$page_params[self::KEY_CURRENT_PAGE][self::KEY_CONTENT] = $build->getTwig()
 			->render('_convert_twig_in_content.twig', $page_params);
 
 		// Apply page template
@@ -140,10 +147,16 @@ class ContentFile {
 			->render($this->getTemplate(), $page_params);
 	}
 
+	/**
+	 * Basic page data for use in indexes as well as when building the HTML
+	 *
+	 * @param Build $build
+	 *
+	 * @return array
+	 */
 	public function getBasePageData(Build $build){
 		return [
-			'content' => $this->getMarkdown(),
-			'meta' => $this->getMeta(),
+			self::KEY_META => $this->getMeta(),
 			'path' => $this->getPath($build),
 		];
 	}
