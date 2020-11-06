@@ -49,7 +49,7 @@ class ContentFileList {
 	 *
 	 * @return array[]
 	 */
-	public function compileContentMetadata(Build $build){
+	public function compileContentMetadata(Build $build): array{
 		Utils::getLogger()
 			->info('Indexing page metadata');
 
@@ -94,9 +94,10 @@ class ContentFileList {
 		foreach ($pages_by_meta as $k => &$v){
 			ksort($v);
 		}
+		unset($v);
 
 		// Sort page index by descending date
-		uasort($page_index, function ($a, $b){
+		uasort($page_index, static function ($a, $b){
 			return $b[ContentFile::KEY_META][ContentFile::KEY_META_DATE]<=>$a[ContentFile::KEY_META][ContentFile::KEY_META_DATE];
 		});
 		Utils::getLogger()
@@ -110,7 +111,7 @@ class ContentFileList {
 	 *
 	 * @param Build $build
 	 */
-	public function process(Build $build){
+	public function process(Build $build): void{
 		Utils::getLogger()
 			->info('Building content');
 		while (false!==($file = $this->popType(ContentFile::TYPE_COPY))){
@@ -124,12 +125,14 @@ class ContentFileList {
 	/**
 	 * Pops a ContentFile from one of the file type lists
 	 *
-	 * @param $type
+	 * @param int $type
 	 *
 	 * @return false|ContentFile
 	 */
 	public function popType(int $type){
-		self::validateType($type);
+		if (!self::validateType($type)){
+			throw new RuntimeException('Invalid content file type '.$type);
+		}
 		if (count($this->filenames[$type])===0){
 			return false;
 		}
@@ -138,13 +141,13 @@ class ContentFileList {
 	}
 
 	/**
-	 * Throws an exception if a type is not valid
+	 * Checks if a type is valid
 	 *
 	 * @param int $type
+	 *
+	 * @return bool
 	 */
-	private static function validateType(int $type){
-		if ($type!=ContentFile::TYPE_COPY && $type!=ContentFile::TYPE_PARSE){
-			throw new RuntimeException('Invalid content file type '.$type);
-		}
+	private static function validateType(int $type): bool{
+		return ($type===ContentFile::TYPE_COPY || $type===ContentFile::TYPE_PARSE);
 	}
 }
