@@ -95,7 +95,7 @@ class ContentFile {
 	public function process(Build $build): void{
 		$target_filename = $this->getBuildFilename($build);
 		if (!is_dir(dirname($target_filename))){
-			if (false===mkdir(dirname($target_filename), 0755, true)){
+			if (!mkdir($concurrentDirectory = dirname($target_filename), 0755, true) && !is_dir($concurrentDirectory)){
 				throw new RuntimeException('Could not create target dir '.dirname($target_filename));
 			}
 		}
@@ -158,7 +158,7 @@ class ContentFile {
 			self::KEY_OPTIONS => $build->getOptions(),
 		];
 		$page_params[self::KEY_CURRENT_PAGE][self::KEY_CONTENT] = $this->getMarkdown();
-		$page_params += $build->getBuildMetadata();
+		$page_params = array_merge($build->getBuildMetadata(), $page_params);
 
 		// Render markdown content, using Twig content filter first
 		Utils::getLogger()
