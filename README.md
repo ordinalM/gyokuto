@@ -13,15 +13,20 @@ In your project, install the module with:
 composer require ordinalm/gyokuto dev-master
 ```
 
+## Page rendering
+
 Start a build with:
 
 ```
 vendor/ordinalm/gyokuto/bin/build
 ```
 
-By default, this will look for content in `./content` and output to `./www`.
+By default, this will look for content in `./content` and output to `./www`, reading options from `./gyokuto.yml`.
 
-## Page rendering
+Use `-o /path/to/options/YOUR_OPTIONS_FILE.yml` to use a different options file on startup.
+
+Use `-v1` for verbose output.
+
 
 ### Markdown page structure
 
