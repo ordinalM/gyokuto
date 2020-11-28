@@ -3,6 +3,7 @@
 namespace Gyokuto;
 
 use Exception;
+use RuntimeException;
 use Symfony\Component\Yaml\Yaml;
 use Twig\Environment;
 use Twig\Extension\StringLoaderExtension;
@@ -134,7 +135,7 @@ class Build {
 		return $status;
 	}
 
-	private function moveTempToOutput(){
+	private function moveTempToOutput(): void{
 		Utils::getLogger()
 			->info('Moving temporary build directory to '.realpath($this->output_dir));
 		Utils::deleteDir($this->output_dir);
@@ -146,8 +147,8 @@ class Build {
 	 * @return array|string
 	 */
 	public function getTempDir(){
-		if (!is_dir($this->temp_dir)){
-			mkdir($this->temp_dir, 0755, true);
+		if (!is_dir($this->temp_dir) && !mkdir($concurrentDirectory = $this->temp_dir, 0755, true) && !is_dir($concurrentDirectory)){
+			throw new RuntimeException(sprintf('Directory "%s" was not created', $concurrentDirectory));
 		}
 
 		return realpath($this->temp_dir);
@@ -156,7 +157,7 @@ class Build {
 	/**
 	 * Cleans up a run, removing all temp files
 	 */
-	private function cleanup(){
+	private function cleanup(): void{
 		if (is_dir($this->getTempDir())){
 			Utils::deleteDir($this->getTempDir());
 			Utils::getLogger()
