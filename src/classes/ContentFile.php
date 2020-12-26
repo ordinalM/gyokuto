@@ -12,6 +12,8 @@ class ContentFile {
 	public const KEY_META_HIDDEN = 'hidden';
 	public const KEY_META = 'meta';
 	public const KEY_META_DATE = 'date';
+	private const KEY_META_MODIFIED = 'modified';
+	private const KEY_META_CREATED = 'created';
 	private const KEY_META_TITLE = 'title';
 	private const KEY_CONTENT = 'content';
 	private const KEY_CURRENT_PAGE = 'current_page';
@@ -61,6 +63,8 @@ class ContentFile {
 		}
 		$this->meta += [
 			self::KEY_META_DATE => filemtime($this->filename),
+			self::KEY_META_CREATED => filectime($this->filename),
+			self::KEY_META_MODIFIED => filemtime($this->filename),
 			self::KEY_META_TITLE => $this->getTitleFromFilename(),
 		];
 
