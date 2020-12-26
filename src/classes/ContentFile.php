@@ -131,7 +131,7 @@ class ContentFile {
 		if (empty($this->meta[self::KEY_PATH])){
 			$path = preg_replace(self::REGEX_MARKDOWN_EXTENSION, '.html', $this->filename);
 			if ($strip_index){
-				$path = preg_replace('|/index\.html$|', '', $path);
+				$path = preg_replace('|index\.html$|', '', $path);
 			}
 			$path = str_replace($build->getContentDir(), '', $path);
 		}
