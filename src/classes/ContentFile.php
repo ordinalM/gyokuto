@@ -94,10 +94,8 @@ class ContentFile {
 	 */
 	public function process(Build $build): void{
 		$target_filename = $this->getBuildFilename($build);
-		if (!is_dir(dirname($target_filename))){
-			if (!mkdir($concurrentDirectory = dirname($target_filename), 0755, true) && !is_dir($concurrentDirectory)){
-				throw new RuntimeException('Could not create target dir '.dirname($target_filename));
-			}
+		if (!is_dir(dirname($target_filename)) && !mkdir($concurrentDirectory = dirname($target_filename), 0755, true) && !is_dir($concurrentDirectory)){
+			throw new RuntimeException('Could not create target dir '.dirname($target_filename));
 		}
 		if (!$this->isParsable()){
 			copy($this->filename, $target_filename);
@@ -133,7 +131,7 @@ class ContentFile {
 		if (empty($this->meta[self::KEY_PATH])){
 			$path = preg_replace(self::REGEX_MARKDOWN_EXTENSION, '.html', $this->filename);
 			if ($strip_index){
-				$path = preg_replace('/index\.html$/', '', $path);
+				$path = preg_replace('|/index\.html$|', '', $path);
 			}
 			$path = str_replace($build->getContentDir(), '', $path);
 		}
