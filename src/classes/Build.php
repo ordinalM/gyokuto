@@ -25,7 +25,7 @@ class Build {
 	private $content_dir = './content';
 	private $output_dir = './www';
 	private $temp_dir = './.gyokuto-tmp';
-	private $options;
+	private $config;
 	/**
 	 * @var Environment
 	 */
@@ -35,19 +35,19 @@ class Build {
 	 */
 	private $build_metadata;
 
-	public function __construct(string $options_file = null){
-		$options_file = $options_file ?? self::OPTIONS_FILE_DEFAULT;
-		if (is_file($options_file)){
-			$this->options = Yaml::parse(file_get_contents($options_file));
+	public function __construct(string $config_file = null){
+		$config_file = $config_file ?? self::OPTIONS_FILE_DEFAULT;
+		if (is_file($config_file)){
+			$this->config = Yaml::parse(file_get_contents($config_file));
 			Utils::getLogger()
-				->debug('Read options from file '.realpath($options_file), $this->options);
+				->debug('Read options from file '.realpath($config_file), $this->config);
 		}
 		else {
-			$this->options = [];
+			$this->config = [];
 		}
-		$this->content_dir = $this->options[self::OPTION_CONTENT_DIR] ?? $this->content_dir;
-		$this->output_dir = $this->options[self::OPTION_OUTPUT_DIR] ?? $this->output_dir;
-		$this->temp_dir = $this->options[self::OPTION_TEMP_DIR] ?? $this->temp_dir;
+		$this->content_dir = $this->config[self::OPTION_CONTENT_DIR] ?? $this->content_dir;
+		$this->output_dir = $this->config[self::OPTION_OUTPUT_DIR] ?? $this->output_dir;
+		$this->temp_dir = $this->config[self::OPTION_TEMP_DIR] ?? $this->temp_dir;
 		$this->twig = $this->createTwigEnvironment();
 	}
 
@@ -67,7 +67,7 @@ class Build {
 
 		// This is the user template folder.
 		// We don't actually need to have one.
-		$template_dir_user = $this->options[self::OPTION_TEMPLATE_DIR] ?? self::TEMPLATE_DIR_USER_DEFAULT;
+		$template_dir_user = $this->config[self::OPTION_TEMPLATE_DIR] ?? self::TEMPLATE_DIR_USER_DEFAULT;
 		if (is_dir($template_dir_user)){
 			// Put the user loader first
 			$loaders[] = new FilesystemLoader($template_dir_user);
@@ -90,7 +90,7 @@ class Build {
 
 		// Add a loader for the markdown runtime
 		$twig->addRuntimeLoader(new class implements RuntimeLoaderInterface {
-			public function load($class){
+			public function load($class): ?MarkdownRuntime{
 				if (MarkdownRuntime::class===$class){
 					return new MarkdownRuntime(new DefaultMarkdown());
 				}
@@ -190,18 +190,12 @@ class Build {
 		return $this;
 	}
 
-	/**
-	 * @return array
-	 */
 	public function getBuildMetadata(): array{
 		return $this->build_metadata;
 	}
 
-	/**
-	 * @return mixed
-	 */
-	public function getOptions(){
-		return $this->options;
+	public function getConfig(): array{
+		return $this->config;
 	}
 
 }

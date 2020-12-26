@@ -21,9 +21,9 @@ Start a build with:
 vendor/ordinalm/gyokuto/bin/build
 ```
 
-By default, this will look for content in `./content` and output to `./www`, reading options from `./gyokuto.yml`.
+By default, this will look for content in `./content` and output to `./www`, reading config from `./gyokuto.yml`.
 
-Use `-o /path/to/options/YOUR_OPTIONS_FILE.yml` to use a different options file on startup.
+Use `-o /path/to/config/YOUR_CONFIG_FILE.yml` to use a different config file on startup.
 
 Use `-v1` for verbose output.
 
@@ -101,10 +101,10 @@ Markdown files are parsed with the following steps:
         - `title`
         - `date`
     - `path`
-- `options`
-    - all values declared in the options file
+- `config`
+    - all values declared in the config file
 
-If any metadata fields have been specified for indexing using the `index` value in the options file, they will appear as:
+If any metadata fields have been specified for indexing using the `index` value in the config file, they will appear as:
 
 - `index` - keyed by the meta variable being indexed, sorted by the value of that variable
     - key 1

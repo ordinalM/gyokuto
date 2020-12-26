@@ -55,7 +55,7 @@ class ContentFileList {
 
 		$pages_by_meta = [];
 		$page_index = [];
-		$keys_to_index = $build->getOptions()['index'] ?? [];
+		$keys_to_index = $build->getConfig()['index'] ?? [];
 		if (count($keys_to_index)>0){
 			Utils::getLogger()
 				->debug('Indexing metadata keys:', $keys_to_index);

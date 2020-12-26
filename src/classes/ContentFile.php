@@ -15,7 +15,7 @@ class ContentFile {
 	private const KEY_META_TITLE = 'title';
 	private const KEY_CONTENT = 'content';
 	private const KEY_CURRENT_PAGE = 'current_page';
-	private const KEY_OPTIONS = 'options';
+	private const KEY_CONFIG = 'config';
 	private const KEY_PATH = 'path';
 	private const REGEX_MARKDOWN_EXTENSION = '/\.(md|markdown)$/';
 
@@ -153,7 +153,7 @@ class ContentFile {
 	private function render(Build $build): string{
 		$page_params = [
 			self::KEY_CURRENT_PAGE => $this->getBasePageData($build),
-			self::KEY_OPTIONS => $build->getOptions(),
+			self::KEY_CONFIG => $build->getConfig(),
 		];
 		$page_params[self::KEY_CURRENT_PAGE][self::KEY_CONTENT] = $this->getMarkdown();
 		$page_params = array_merge($build->getBuildMetadata(), $page_params);
