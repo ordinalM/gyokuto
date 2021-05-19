@@ -2,6 +2,7 @@
 
 namespace Gyokuto;
 
+use Exception;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -47,6 +48,7 @@ class ContentFile {
 	 * Processes the content file, pulling metadata and raw markdown.
 	 *
 	 * @return ContentFile
+	 * @throws Exception
 	 */
 	private function readAndSplit(): ContentFile{
 		if (!$this->isParsable()){
@@ -60,6 +62,16 @@ class ContentFile {
 		else {
 			$this->meta = [];
 			$this->markdown = $raw;
+		}
+		if (isset($this->meta[self::KEY_META_DATE])){
+			$parsed_date = strtotime($this->meta[self::KEY_META_DATE]);
+			if ($parsed_date===false){
+				$f = print_r($this->meta[self::KEY_META_DATE], 1);
+				throw new Exception("Tried to parse {$f} as a date but it didn't work");
+			}
+			if ($parsed_date !== $this->meta[self::KEY_META_DATE]) {
+				$this->meta[self::KEY_META_DATE] = $parsed_date;
+			}
 		}
 		$this->meta += [
 			self::KEY_META_DATE => filemtime($this->filename),
