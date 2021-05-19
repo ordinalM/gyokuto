@@ -63,7 +63,9 @@ class ContentFile {
 			$this->meta = [];
 			$this->markdown = $raw;
 		}
-		if (isset($this->meta[self::KEY_META_DATE])){
+		// Try to parse the date if it's left it as a string
+		// If it has been turned into an int, we assume Yaml has parsed it already.
+		if (isset($this->meta[self::KEY_META_DATE]) && is_string($this->meta[self::KEY_META_DATE])){
 			$parsed_date = strtotime($this->meta[self::KEY_META_DATE]);
 			if ($parsed_date===false){
 				$f = print_r($this->meta[self::KEY_META_DATE], 1);
