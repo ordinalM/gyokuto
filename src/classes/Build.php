@@ -144,9 +144,9 @@ class Build {
 	}
 
 	/**
-	 * @return array|string
+	 * @throws RuntimeException
 	 */
-	public function getTempDir(){
+	public function getTempDir(): string{
 		if (!is_dir($this->temp_dir) && !mkdir($concurrentDirectory = $this->temp_dir, 0755, true) && !is_dir($concurrentDirectory)){
 			throw new RuntimeException(sprintf('Directory "%s" was not created', $concurrentDirectory));
 		}
@@ -165,10 +165,7 @@ class Build {
 		}
 	}
 
-	/**
-	 * @return array|false|string
-	 */
-	public function getContentDir(){
+	public function getContentDir(): string{
 		return realpath($this->content_dir);
 	}
 
