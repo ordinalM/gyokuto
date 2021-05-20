@@ -91,7 +91,7 @@ class ContentFileList {
 		}
 
 		// Sort each index by value of indexed key
-		foreach ($pages_by_meta as $k => &$v){
+		foreach ($pages_by_meta as &$v){
 			ksort($v);
 		}
 		unset($v);
