@@ -32,10 +32,13 @@ class ContentFile {
 	/**
 	 * Holds the raw markdown text for this content file, if any.
 	 *
-	 * @var false|string
+	 * @var string|false
 	 */
 	private $markdown = false;
 
+	/**
+	 * @throws Exception
+	 */
 	public function __construct(string $filename){
 		if (!is_file($filename)){
 			throw new RuntimeException('Bad filename '.$filename);
@@ -69,17 +72,21 @@ class ContentFile {
 			$parsed_date = strtotime($this->meta[self::KEY_META_DATE]);
 			if ($parsed_date===false){
 				$f = print_r($this->meta[self::KEY_META_DATE], 1);
-				throw new Exception("Tried to parse {$f} as a date but it didn't work");
+				throw new Exception("Tried to parse $f as a date but it didn't work");
 			}
-			if ($parsed_date !== $this->meta[self::KEY_META_DATE]) {
+			if ($parsed_date!==$this->meta[self::KEY_META_DATE]){
 				$this->meta[self::KEY_META_DATE] = $parsed_date;
 			}
 		}
+		// If the title is missing or empty, generate it. (It may be an empty string, which we can't use.)
+		if (empty($this->meta[self::KEY_META_TITLE])){
+			$this->meta[self::KEY_META_TITLE] = $this->getTitleFromFilename();
+		}
+		// Otherwise, set defaults.
 		$this->meta += [
 			self::KEY_META_DATE => filemtime($this->filename),
 			self::KEY_META_CREATED => filectime($this->filename),
 			self::KEY_META_MODIFIED => filemtime($this->filename),
-			self::KEY_META_TITLE => $this->getTitleFromFilename(),
 		];
 
 		return $this;
@@ -168,6 +175,12 @@ class ContentFile {
 		return $this->meta;
 	}
 
+	/**
+	 * @throws \Twig\Error\SyntaxError
+	 * @throws \Twig\Error\RuntimeError
+	 * @throws \Twig\Error\LoaderError
+	 * @throws Exception
+	 */
 	private function render(Build $build): string{
 		$page_params = [
 			self::KEY_CURRENT_PAGE => $this->getBasePageData($build),
@@ -203,7 +216,7 @@ class ContentFile {
 	}
 
 	/**
-	 * @return string
+	 * @throws Exception
 	 */
 	private function getMarkdown(): string{
 		if ($this->markdown===false){
