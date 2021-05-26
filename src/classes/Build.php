@@ -13,6 +13,7 @@ use Twig\Extra\Markdown\MarkdownRuntime;
 use Twig\Loader\ChainLoader;
 use Twig\Loader\FilesystemLoader;
 use Twig\RuntimeLoader\RuntimeLoaderInterface;
+use Twig\TwigFilter;
 
 class Build {
 	private const OPTION_CONTENT_DIR = 'content_dir';
@@ -102,6 +103,11 @@ class Build {
 		// We use the string loader extension to parse Twig in markdown body.
 		$twig->addExtension(new StringLoaderExtension());
 		$twig->addExtension(new MarkdownExtension());
+
+		// Add a preg_replace filter
+		$twig->addFilter(new TwigFilter('preg_replace', function ($subject, $pattern, $replacement) {
+			return preg_replace($pattern, $replacement, $subject);
+		}));
 
 		return $twig;
 	}
