@@ -12,7 +12,7 @@ use Gyokuto\Utils;
 use Monolog\Logger;
 
 try {
-  if ($options['v']) {
+  if ($options['v'] ?? false) {
     Utils::setLogLevel(Logger::DEBUG);
   }
 	$build = new Build($options['o'] ?? null);
