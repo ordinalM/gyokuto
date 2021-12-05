@@ -5,6 +5,9 @@ namespace Gyokuto;
 use Exception;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;
+use Twig\Error\LoaderError;
+use Twig\Error\RuntimeError;
+use Twig\Error\SyntaxError;
 
 class ContentFile {
 	public const TYPE_PARSE = 0;
@@ -74,7 +77,7 @@ class ContentFile {
 				$f = print_r($this->meta, 1);
 				throw new Exception("Tried to parse date field as a date but it didn't work - full meta is: $f");
 			}
-			if ($parsed_date!==$this->meta[self::KEY_META_DATE]){
+			if ((string) $parsed_date!==$this->meta[self::KEY_META_DATE]){
 				$this->meta[self::KEY_META_DATE] = $parsed_date;
 			}
 		}
@@ -116,6 +119,7 @@ class ContentFile {
 
 	/**
 	 * @param Build $build
+	 * @throws Exception
 	 */
 	public function process(Build $build): void{
 		$target_filename = $this->getBuildFilename($build);
@@ -129,7 +133,7 @@ class ContentFile {
 
 			return;
 		}
-		if ($this->getMeta()[self::KEY_META_DRAFT]){
+		if ($this->getMeta()[self::KEY_META_DRAFT] ?? false){
 			Utils::getLogger()
 				->debug('Skipping draft file', $this->getMeta());
 
@@ -176,9 +180,9 @@ class ContentFile {
 	}
 
 	/**
-	 * @throws \Twig\Error\SyntaxError
-	 * @throws \Twig\Error\RuntimeError
-	 * @throws \Twig\Error\LoaderError
+	 * @throws SyntaxError
+	 * @throws RuntimeError
+	 * @throws LoaderError
 	 * @throws Exception
 	 */
 	private function render(Build $build): string{
