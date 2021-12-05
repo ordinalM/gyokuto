@@ -2,6 +2,7 @@
 
 namespace Gyokuto;
 
+use Exception;
 use RuntimeException;
 
 class ContentFileList {
@@ -48,6 +49,7 @@ class ContentFileList {
 	 * @param Build $build
 	 *
 	 * @return array[]
+	 * @throws Exception
 	 */
 	public function compileContentMetadata(Build $build): array{
 		Utils::getLogger()
@@ -64,7 +66,7 @@ class ContentFileList {
 			$content_file = new ContentFile($filename);
 			$page_meta = $content_file->getMeta();
 			// Don't index anything in draft pages
-			if ($page_meta[ContentFile::KEY_META_DRAFT] || $page_meta[ContentFile::KEY_META_HIDDEN]){
+			if (($page_meta[ContentFile::KEY_META_DRAFT] ?? false) || ($page_meta[ContentFile::KEY_META_HIDDEN] ?? false)){
 				continue;
 			}
 			$page_path = $content_file->getPath($build);
@@ -109,7 +111,7 @@ class ContentFileList {
 	/**
 	 * Processes all files in this content list
 	 *
-	 * @param Build $build
+	 * @throws Exception
 	 */
 	public function process(Build $build): void{
 		Utils::getLogger()
@@ -125,9 +127,8 @@ class ContentFileList {
 	/**
 	 * Pops a ContentFile from one of the file type lists
 	 *
-	 * @param int $type
-	 *
 	 * @return false|ContentFile
+	 * @throws Exception
 	 */
 	public function popType(int $type){
 		if (!self::validateType($type)){
