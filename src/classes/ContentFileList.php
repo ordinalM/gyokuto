@@ -6,7 +6,7 @@ use Exception;
 use RuntimeException;
 
 class ContentFileList {
-	private const KEY_PAGES_BY_META = 'index';
+	public const KEY_PAGES_BY_META = 'index';
 	public const KEY_PAGE_INDEX = 'pages';
 	private $filenames = [ContentFile::TYPE_PARSE => [], ContentFile::TYPE_COPY => []];
 
@@ -116,6 +116,10 @@ class ContentFileList {
 	public function process(Build $build): void{
 		Utils::getLogger()
 			->info('Building content');
+
+		// Build the Zettel ID index in metadata
+		Zettelkasten::getZettelIndex($build);
+
 		while (false!==($file = $this->popType(ContentFile::TYPE_COPY))){
 			$file->process($build);
 		}
