@@ -201,4 +201,10 @@ class Build {
 		return $this->config;
 	}
 
+	public function setBuildMetadata(array $build_metadata): Build{
+		$this->build_metadata = $build_metadata;
+
+		return $this;
+	}
+
 }

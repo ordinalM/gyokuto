@@ -7,7 +7,7 @@ use RuntimeException;
 
 class ContentFileList {
 	private const KEY_PAGES_BY_META = 'index';
-	private const KEY_PAGE_INDEX = 'pages';
+	public const KEY_PAGE_INDEX = 'pages';
 	private $filenames = [ContentFile::TYPE_PARSE => [], ContentFile::TYPE_COPY => []];
 
 	public static function createFromDirectory($content_dir): ContentFileList{

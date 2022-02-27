@@ -22,7 +22,7 @@ class ContentFile {
 	private const KEY_CONTENT = 'content';
 	private const KEY_CURRENT_PAGE = 'current_page';
 	private const KEY_CONFIG = 'config';
-	private const KEY_PATH = 'path';
+	public const KEY_PATH = 'path';
 	private const REGEX_MARKDOWN_EXTENSION = '/\.(md|markdown)$/';
 
 	private $filename;
@@ -137,6 +137,7 @@ class ContentFile {
 			return;
 		}
 		$html = $this->render($build);
+		$html = Zettelkasten::processHtml($html, $build);
 		file_put_contents($target_filename, $html);
 		Utils::getLogger()
 			->debug('Wrote parsed file', [$this->filename, $target_filename]);
@@ -168,11 +169,7 @@ class ContentFile {
 		return '/'.ltrim($path, '/');
 	}
 
-	/**
-	 * @return array
-	 */
 	public function getMeta(): array{
-
 		return $this->meta;
 	}
 
