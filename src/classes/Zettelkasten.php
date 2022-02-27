@@ -6,6 +6,9 @@ class Zettelkasten implements ContentFilePlugin {
 	private const KEYS_ZETTEL_ID = ['zid', 'id', 'zettel'];
 	private const KEY_ZETTEL_INDEX = 'zettel';
 
+	/**
+	 * @throws GyokutoException
+	 */
 	public static function processHtml(string $html, Build $build): string{
 		$zettel_index = self::getZettelIndex($build);
 
@@ -26,6 +29,7 @@ class Zettelkasten implements ContentFilePlugin {
 
 	/**
 	 * @return array<string, int>
+	 * @throws GyokutoException
 	 */
 	private static function getZettelIndex(Build $build): array{
 		$build_metadata = $build->getBuildMetadata();
@@ -39,7 +43,11 @@ class Zettelkasten implements ContentFilePlugin {
 			if (!$zid){
 				continue;
 			}
-			$zettel_index[$zid] = $page[ContentFile::KEY_PATH];
+			$path = $page[ContentFile::KEY_PATH];
+			if (isset($zettel_index[$zid])) {
+				throw new GyokutoException("Duplicate Zettel ID $zid found for paths $path and $zettel_index[$zid]");
+			}
+			$zettel_index[$zid] = $path;
 		}
 		$build->setBuildMetadata(array_merge($build_metadata, [
 			self::KEY_ZETTEL_INDEX => $zettel_index,
@@ -50,7 +58,7 @@ class Zettelkasten implements ContentFilePlugin {
 
 	private static function getZidFromPageMeta(array $meta): ?int{
 		foreach (self::KEYS_ZETTEL_ID as $key) {
-			if (self::isValidZettleId($meta[$key] ?? null)){
+			if (self::isValidZettelId($meta[$key] ?? null)){
 				return (int) $meta[$key];
 			}
 		}
@@ -61,7 +69,7 @@ class Zettelkasten implements ContentFilePlugin {
 	/**
 	 * @param mixed $key
 	 */
-	private static function isValidZettleId($key):bool {
+	private static function isValidZettelId($key):bool {
 		if (is_int($key)) {
 			return true;
 		}
