@@ -33,7 +33,7 @@ class ContentFile {
 	 */
 	private $meta = false;
 	/**
-	 * Holds the raw markdown text for this content file, if any.
+	 * Holds the raw Markdown text for this content file, if any.
 	 *
 	 * @var string|false
 	 */
@@ -53,12 +53,11 @@ class ContentFile {
 	/**
 	 * Processes the content file, pulling metadata and raw markdown.
 	 *
-	 * @return ContentFile
 	 * @throws Exception
 	 */
-	private function readAndSplit(): ContentFile{
+	private function readAndSplit(): void{
 		if (!$this->isParsable()){
-			return $this;
+			return;
 		}
 		$raw = file_get_contents($this->filename);
 		if (preg_match('/^---\n(.+?)\n---\n\s*(.*)\s*$/s', $raw, $matches)){
@@ -91,8 +90,6 @@ class ContentFile {
 			self::KEY_META_CREATED => filectime($this->filename),
 			self::KEY_META_MODIFIED => filemtime($this->filename),
 		];
-
-		return $this;
 	}
 
 	private function isParsable(): bool{
@@ -112,13 +109,13 @@ class ContentFile {
 		$title = basename($this->filename);
 		$title = preg_replace('/\.[^.]+$/', '', $title);
 		$title = preg_replace('/[-_]+/', ' ', $title);
-		$title = trim($title);
 
-		return $title;
+		return trim($title);
 	}
 
 	/**
 	 * @param Build $build
+	 *
 	 * @throws Exception
 	 */
 	public function process(Build $build): void{
