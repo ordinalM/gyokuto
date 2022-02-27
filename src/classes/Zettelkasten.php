@@ -3,7 +3,7 @@
 namespace Gyokuto;
 
 class Zettelkasten implements ContentFilePlugin {
-	private const KEY_ZETTEL_ID = 'zid';
+	private const KEYS_ZETTEL_ID = ['zid', 'id', 'zettel'];
 	private const KEY_ZETTEL_INDEX = 'zettel';
 
 	public static function processHtml(string $html, Build $build): string{
@@ -49,10 +49,25 @@ class Zettelkasten implements ContentFilePlugin {
 	}
 
 	private static function getZidFromPageMeta(array $meta): ?int{
-		if ($meta[self::KEY_ZETTEL_ID] ?? false){
-			return (int) $meta[self::KEY_ZETTEL_ID];
+		foreach (self::KEYS_ZETTEL_ID as $key) {
+			if (self::isValidZettleId($meta[$key] ?? null)){
+				return (int) $meta[$key];
+			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * @param mixed $key
+	 */
+	private static function isValidZettleId($key):bool {
+		if (is_int($key)) {
+			return true;
+		}
+		if (is_string($key) && preg_match('/^\d+$/', $key)) {
+			return true;
+		}
+		return false;
 	}
 }
