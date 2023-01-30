@@ -13,7 +13,7 @@
 		"twig/markdown-extra": "^3.0",
 		"monolog/monolog": "^2.1",
 		"ext-gd": "*",
-		"php": "^7.3",
+		"php": "^7.4",
 		"michelf/php-markdown": "^1.9"
 	},
 	"autoload": {
