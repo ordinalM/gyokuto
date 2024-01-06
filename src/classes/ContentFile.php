@@ -25,19 +25,15 @@ class ContentFile {
 	public const KEY_PATH = 'path';
 	private const REGEX_MARKDOWN_EXTENSION = '/\.(md|markdown)$/';
 
-	private $filename;
+	private string $filename;
 	/**
 	 * Holds the meta array for this content file, if any.
-	 *
-	 * @var false|array
 	 */
-	private $meta = false;
+	private ?array $meta = null;
 	/**
 	 * Holds the raw Markdown text for this content file, if any.
-	 *
-	 * @var string|false
 	 */
-	private $markdown = false;
+	private ?string $markdown = null;
 
 	/**
 	 * @throws Exception

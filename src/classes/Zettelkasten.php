@@ -12,20 +12,18 @@ class Zettelkasten implements ContentFilePlugin {
 	public static function processHtml(string $html, Build $build): string{
 		$zettel_index = self::getZettelIndex($build);
 
-		$html = preg_replace_callback('/href\s*=\s*\"(\d+)\"/', static function ($matches) use ($zettel_index){
-			$zid = (int) $matches[1];
-			$href = $matches[0];
-			if (!isset($zettel_index[$zid])){
-				return $href;
-			}
-			$href = str_replace((string) $zid, $zettel_index[$zid], $href);
-			Utils::getLogger()
-				->debug("Replaced zettel ID $zid with $zettel_index[$zid]");
+        return preg_replace_callback('/href\s*=\s*\"(\d+)\"/', static function ($matches) use ($zettel_index){
+            $zid = (int) $matches[1];
+            $href = $matches[0];
+            if (!isset($zettel_index[$zid])){
+                return $href;
+            }
+            $href = str_replace((string) $zid, $zettel_index[$zid], $href);
+            Utils::getLogger()
+                ->debug("Replaced zettel ID $zid with $zettel_index[$zid]");
 
-			return $href;
-		}, $html);
-
-		return $html;
+            return $href;
+        }, $html);
 	}
 
 	/**
@@ -80,10 +78,7 @@ class Zettelkasten implements ContentFilePlugin {
 		return null;
 	}
 
-	/**
-	 * @param mixed $key
-	 */
-	public static function isValidZettelId($key): bool{
+	public static function isValidZettelId(mixed $key): bool{
 		if (is_int($key)){
 			return true;
 		}

@@ -7,7 +7,7 @@ use Monolog\Logger;
 use RuntimeException;
 
 class Utils {
-	private static $log_level = Logger::INFO;
+	private static int $log_level = Logger::INFO;
 
 	public static function getLogger(): Logger{
 		static $logger;
