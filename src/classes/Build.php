@@ -5,6 +5,7 @@ namespace Gyokuto;
 use Exception;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;
+use Throwable;
 use Twig\Environment;
 use Twig\Extension\StringLoaderExtension;
 use Twig\Extra\Markdown\DefaultMarkdown;
@@ -115,7 +116,7 @@ class Build
     }
 
     /**
-     * Begins a build run
+     * @throws Exception
      */
     public function run(): bool
     {
@@ -130,11 +131,11 @@ class Build
             $this->moveTempToOutput();
 
             $status = true;
-        } catch (Exception $exception) {
+        } catch (Throwable $exception) {
             Utils::getLogger()
                 ->error('Error in build', [$exception->getFile(), $exception->getLine(), $exception->getMessage()]);
 
-            $status = false;
+            throw $exception;
         }
         $this->cleanup();
         Utils::getLogger()
