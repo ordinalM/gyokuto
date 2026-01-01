@@ -20,5 +20,8 @@
 		"psr-4": {
 			"Gyokuto\\": "src/classes"
 		}
+	},
+	"require-dev": {
+		"roave/security-advisories": "dev-latest"
 	}
 }
