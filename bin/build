@@ -19,7 +19,6 @@ try {
   $build->run();
 }
 catch (Throwable $e) {
-  echo $e->getMessage();
   exit(1);
 }
 
