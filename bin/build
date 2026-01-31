@@ -18,7 +18,7 @@ try {
 	$build = new Build($options['o'] ?? null);
   $build->run();
 }
-catch (Exception $e) {
+catch (Throwable $e) {
   echo $e->getMessage();
   exit(1);
 }

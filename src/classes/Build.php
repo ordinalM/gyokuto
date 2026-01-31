@@ -116,7 +116,7 @@ class Build
     }
 
     /**
-     * @throws Exception
+     * @throws Throwable
      */
     public function run(): bool
     {
