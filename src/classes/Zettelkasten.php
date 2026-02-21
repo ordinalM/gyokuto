@@ -27,7 +27,7 @@ class Zettelkasten implements ContentFilePlugin {
 	}
 
 	/**
-	 * @return array<string, int>
+	 * @return array<int, string>
 	 * @throws GyokutoException
 	 */
 	public static function getZettelIndex(Build $build): array{
@@ -47,18 +47,22 @@ class Zettelkasten implements ContentFilePlugin {
 	}
 
 	/**
-	 * @return array<string, int>
+	 * @return array<int, string>
 	 * @throws GyokutoException
 	 */
 	private static function createZettelIndex(Build $build): array{
 		$zettel_index = [];
-		foreach ($build->getBuildMetadata()[ContentFileList::KEY_PAGE_INDEX] as $page){
+        /** @var array<string, mixed> $page */
+        foreach ($build->getBuildMetadata()[ContentFileList::KEY_PAGE_INDEX] as $page){
 			// Get zid
 			$zid = self::getZidFromPageMeta($page[ContentFile::KEY_META]);
 			if (!$zid){
 				continue;
 			}
 			$path = $page[ContentFile::KEY_PATH];
+            if (!is_string($path)){
+                throw new GyokutoException('$path found that is not a string');
+            }
 			if (isset($zettel_index[$zid])){
 				throw new GyokutoException("Duplicate Zettel ID $zid found for paths $path and $zettel_index[$zid]");
 			}
@@ -68,7 +72,10 @@ class Zettelkasten implements ContentFilePlugin {
 		return $zettel_index;
 	}
 
-	private static function getZidFromPageMeta(array $meta): ?int{
+    /**
+     * @param array<string, mixed> $meta
+     */
+    private static function getZidFromPageMeta(array $meta): ?int{
 		foreach (self::KEYS_ZETTEL_ID as $key){
 			if (self::isValidZettelId($meta[$key] ?? null)){
 				return (int) $meta[$key];
@@ -78,7 +85,10 @@ class Zettelkasten implements ContentFilePlugin {
 		return null;
 	}
 
-	public static function isValidZettelId(mixed $key): bool{
+    /**
+     * @phpstan-assert-if-true string|int $key
+     */
+    public static function isValidZettelId(mixed $key): bool{
 		if (is_int($key)){
 			return true;
 		}

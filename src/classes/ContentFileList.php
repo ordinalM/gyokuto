@@ -7,11 +7,14 @@ use RuntimeException;
 
 class ContentFileList
 {
-    public const KEY_PAGES_BY_META = 'index';
-    public const KEY_PAGE_INDEX = 'pages';
+    public const string KEY_PAGES_BY_META = 'index';
+    public const string KEY_PAGE_INDEX = 'pages';
+    /**
+     * @var array{0: list<string>, 1: list<string>}
+     */
     private array $filenames = [ContentFile::TYPE_PARSE => [], ContentFile::TYPE_COPY => []];
 
-    public static function createFromDirectory($content_dir): ContentFileList
+    public static function createFromDirectory(string $content_dir): ContentFileList
     {
         Utils::getLogger()->info('Indexing content files in ' . realpath($content_dir));
         $all_files = Utils::findFilesRecursive($content_dir);
@@ -31,12 +34,8 @@ class ContentFileList
 
     /**
      * Pushes a file onto the appropriate file type list
-     *
-     * @param $filename
-     *
-     * @return $this
      */
-    public function push($filename): ContentFileList
+    public function push(string $filename): self
     {
         $this->filenames[ContentFile::filenameIsParsable($filename) ? ContentFile::TYPE_PARSE : ContentFile::TYPE_COPY][] = $filename;
 
@@ -49,7 +48,7 @@ class ContentFileList
      *
      * @param Build $build
      *
-     * @return array[]
+     * @return array{index: array<string, array<string, list<string>>>, pages: array<string, array{meta: string, path: string}>}
      * @throws Exception
      */
     public function compileContentMetadata(Build $build): array
@@ -58,7 +57,7 @@ class ContentFileList
 
         $pages_by_meta = [];
         $page_index = [];
-        $keys_to_index = $build->getConfig()['index'] ?? [];
+        $keys_to_index = $build->config['index'] ?? [];
         if (count($keys_to_index) > 0) {
             Utils::getLogger()->debug('Indexing metadata keys:', $keys_to_index);
         }
@@ -99,6 +98,7 @@ class ContentFileList
         unset($v);
 
         // Sort page index by descending date
+        /** @var array<string, array<string, mixed>> $page_index */
         uasort($page_index, static function ($a, $b) {
             return $b[ContentFile::KEY_META][ContentFile::KEY_META_DATE] <=> $a[ContentFile::KEY_META][ContentFile::KEY_META_DATE];
         });

@@ -7,7 +7,10 @@ use Monolog\Logger;
 use RuntimeException;
 
 class Utils {
-	private static int $log_level = Logger::INFO;
+    /**
+     * @var 100|200|250|300|400|500|550|600 $log_level
+     */
+    private static int $log_level = Logger::INFO;
 
 	public static function getLogger(): Logger{
 		static $logger;
@@ -20,7 +23,7 @@ class Utils {
 	}
 
 	/**
-	 * @param int $log_level
+	 * @param 100|200|250|300|400|500|550|600 $log_level
 	 */
 	public static function setLogLevel(int $log_level): void{
 		self::$log_level = $log_level;
@@ -58,11 +61,17 @@ class Utils {
 		return true;
 	}
 
-	public static function getDirectoryContents(string $dir): array{
+    /**
+     * @return list<string>
+     */
+    public static function getDirectoryContents(string $dir): array{
 		return array_values(array_diff(scandir($dir), ['..', '.']));
 	}
 
-	public static function findFilesRecursive(string $dir, callable $filter = null): array{
+    /**
+     * @return list<string>
+     */
+    public static function findFilesRecursive(string $dir, ?callable $filter = null): array{
 		if (!is_dir($dir)){
 			throw new RuntimeException('Directory "'.$dir.'" is not a directory');
 		}

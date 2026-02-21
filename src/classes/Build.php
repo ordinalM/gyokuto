@@ -28,11 +28,21 @@ class Build
     private string $content_dir = './content';
     private string $output_dir = './www';
     private string $temp_dir = './.gyokuto-tmp';
-    private array $config;
+    /**
+     * @var array<string, mixed>
+     */
+    public array $config {
+        get {
+            return $this->config;
+        }
+    }
     private Environment $twig;
+    /**
+     * @var array<string, mixed>
+     */
     private array $build_metadata = [];
 
-    public function __construct(string $config_file = null)
+    public function __construct(?string $config_file = null)
     {
         $config_file = $config_file ?? self::OPTIONS_FILE_DEFAULT;
         if (is_file($config_file)) {
@@ -91,9 +101,9 @@ class Build
             'auto_reload' => true,
         ]);
 
-        // Add a loader for the markdown runtime
+        // Add a loader for the Markdown runtime
         $twig->addRuntimeLoader(new class implements RuntimeLoaderInterface {
-            public function load($class): ?MarkdownRuntime
+            public function load(string $class): ?MarkdownRuntime
             {
                 if (MarkdownRuntime::class === $class) {
                     return new MarkdownRuntime(new DefaultMarkdown());
@@ -202,21 +212,22 @@ class Build
         return $this;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getBuildMetadata(): array
     {
         return $this->build_metadata;
     }
 
-    public function setBuildMetadata(array $build_metadata): Build
+    /**
+     * @param array<string, mixed> $build_metadata
+     */
+    public function setBuildMetadata(array $build_metadata): self
     {
         $this->build_metadata = $build_metadata;
 
         return $this;
-    }
-
-    public function getConfig(): array
-    {
-        return $this->config;
     }
 
 }

@@ -22,6 +22,7 @@
 		}
 	},
 	"require-dev": {
-		"roave/security-advisories": "dev-latest"
+		"roave/security-advisories": "dev-latest",
+		"phpstan/phpstan": "^2.1"
 	}
 }

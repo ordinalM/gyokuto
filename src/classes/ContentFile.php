@@ -28,6 +28,7 @@ class ContentFile {
 	private string $filename;
 	/**
 	 * Holds the meta array for this content file, if any.
+     * @var array<string, mixed>
 	 */
 	private ?array $meta = null;
 	/**
@@ -69,7 +70,7 @@ class ContentFile {
 		if (isset($this->meta[self::KEY_META_DATE]) && is_string($this->meta[self::KEY_META_DATE])){
 			$parsed_date = strtotime($this->meta[self::KEY_META_DATE]);
 			if ($parsed_date===false){
-				$f = print_r($this->meta, 1);
+				$f = json_encode($this->meta) ?: '<unknown>';
 				throw new Exception("Tried to parse date field as a date but it didn't work - full meta is: $f");
 			}
 			if ((string) $parsed_date!==$this->meta[self::KEY_META_DATE]){
@@ -92,7 +93,7 @@ class ContentFile {
 		return self::filenameIsParsable($this->filename);
 	}
 
-	public static function filenameIsParsable($filename): bool{
+	public static function filenameIsParsable(string $filename): bool{
 		return preg_match(self::REGEX_MARKDOWN_EXTENSION, $filename);
 	}
 
@@ -165,7 +166,10 @@ class ContentFile {
 		return '/'.ltrim($path, '/');
 	}
 
-	public function getMeta(): array{
+    /**
+     * @return array<string, mixed>
+     */
+    public function getMeta(): array{
 		return $this->meta;
 	}
 
@@ -178,7 +182,7 @@ class ContentFile {
 	private function render(Build $build): string{
 		$page_params = [
 			self::KEY_CURRENT_PAGE => $this->getBasePageData($build),
-			self::KEY_CONFIG => $build->getConfig(),
+			self::KEY_CONFIG => $build->config,
 		];
 		$page_params[self::KEY_CURRENT_PAGE][self::KEY_CONTENT] = $this->getMarkdown();
 		$page_params = array_merge($build->getBuildMetadata(), $page_params);
@@ -200,7 +204,7 @@ class ContentFile {
 	 *
 	 * @param Build $build
 	 *
-	 * @return array
+	 * @return array{meta: array<string, mixed>, path: string}
 	 */
 	public function getBasePageData(Build $build): array{
 		return [
@@ -209,11 +213,11 @@ class ContentFile {
 		];
 	}
 
-	/**
-	 * @throws Exception
-	 */
-	private function getMarkdown(): string{
-		if ($this->markdown===false){
+    /**
+     * @throws Exception
+     */
+    private function getMarkdown(): string{
+		if (!$this->markdown){
 			$this->readAndSplit();
 		}
 
