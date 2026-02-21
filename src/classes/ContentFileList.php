@@ -63,7 +63,7 @@ class ContentFileList
         }
         foreach ($this->filenames[ContentFile::TYPE_PARSE] as $filename) {
             $content_file = new ContentFile($filename);
-            $page_meta = $content_file->getMeta();
+            $page_meta = $content_file->meta;
             // Don't index anything in draft pages
             if (($page_meta[ContentFile::KEY_META_DRAFT] ?? false) || ($page_meta[ContentFile::KEY_META_HIDDEN] ?? false)) {
                 continue;

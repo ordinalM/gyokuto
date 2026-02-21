@@ -18,13 +18,13 @@ use Twig\TwigFilter;
 
 class Build
 {
-    private const OPTION_CONTENT_DIR = 'content_dir';
-    private const OPTION_OUTPUT_DIR = 'output_dir';
-    private const OPTION_TEMP_DIR = 'temp_dir';
-    private const OPTION_TEMPLATE_DIR = 'template_dir';
-    private const TEMPLATE_DIR_USER_DEFAULT = './templates';
-    private const TEMPLATE_DIR_BUILTIN = '../templates'; // relative to this file
-    private const OPTIONS_FILE_DEFAULT = './gyokuto.yml';
+    private const string OPTION_CONTENT_DIR = 'content_dir';
+    private const string OPTION_OUTPUT_DIR = 'output_dir';
+    private const string OPTION_TEMP_DIR = 'temp_dir';
+    private const string OPTION_TEMPLATE_DIR = 'template_dir';
+    private const string TEMPLATE_DIR_USER_DEFAULT = './templates';
+    private const string TEMPLATE_DIR_BUILTIN = '../templates'; // relative to this file
+    private const string OPTIONS_FILE_DEFAULT = './gyokuto.yml';
     private string $content_dir = './content';
     private string $output_dir = './www';
     private string $temp_dir = './.gyokuto-tmp';

@@ -10,28 +10,32 @@ use Twig\Error\RuntimeError;
 use Twig\Error\SyntaxError;
 
 class ContentFile {
-	public const TYPE_PARSE = 0;
-	public const TYPE_COPY = 1;
-	public const KEY_META_DRAFT = 'draft';
-	public const KEY_META_HIDDEN = 'hidden';
-	public const KEY_META = 'meta';
-	public const KEY_META_DATE = 'date';
-	private const KEY_META_MODIFIED = 'modified';
-	private const KEY_META_CREATED = 'created';
-	private const KEY_META_TITLE = 'title';
-	private const KEY_CONTENT = 'content';
-	private const KEY_CURRENT_PAGE = 'current_page';
-	private const KEY_CONFIG = 'config';
-	public const KEY_PATH = 'path';
-	private const REGEX_MARKDOWN_EXTENSION = '/\.(md|markdown)$/';
+	public const int TYPE_PARSE = 0;
+	public const int TYPE_COPY = 1;
+	public const string KEY_META_DRAFT = 'draft';
+	public const string KEY_META_HIDDEN = 'hidden';
+	public const string KEY_META = 'meta';
+	public const string KEY_META_DATE = 'date';
+	private const string KEY_META_MODIFIED = 'modified';
+	private const string KEY_META_CREATED = 'created';
+	private const string KEY_META_TITLE = 'title';
+	private const string KEY_CONTENT = 'content';
+	private const string KEY_CURRENT_PAGE = 'current_page';
+	private const string KEY_CONFIG = 'config';
+	public const string KEY_PATH = 'path';
+	private const string REGEX_MARKDOWN_EXTENSION = '/\.(md|markdown)$/';
 
 	private string $filename;
 	/**
 	 * Holds the meta array for this content file, if any.
      * @var array<string, mixed>
 	 */
-	private ?array $meta = null;
-	/**
+	public ?array $meta = null {
+        get {
+            return $this->meta;
+        }
+    }
+    /**
 	 * Holds the raw Markdown text for this content file, if any.
 	 */
 	private ?string $markdown = null;
@@ -48,7 +52,7 @@ class ContentFile {
 	}
 
 	/**
-	 * Processes the content file, pulling metadata and raw markdown.
+	 * Processes the content file, pulling metadata and raw Markdown.
 	 *
 	 * @throws Exception
 	 */
@@ -127,9 +131,9 @@ class ContentFile {
 
 			return;
 		}
-		if ($this->getMeta()[self::KEY_META_DRAFT] ?? false){
+		if ($this->meta[self::KEY_META_DRAFT] ?? false){
 			Utils::getLogger()
-				->debug('Skipping draft file', $this->getMeta());
+				->debug('Skipping draft file', $this->meta);
 
 			return;
 		}
@@ -167,13 +171,6 @@ class ContentFile {
 	}
 
     /**
-     * @return array<string, mixed>
-     */
-    public function getMeta(): array{
-		return $this->meta;
-	}
-
-	/**
 	 * @throws SyntaxError
 	 * @throws RuntimeError
 	 * @throws LoaderError
@@ -189,7 +186,7 @@ class ContentFile {
 
 		// Render markdown content, using Twig content filter first
 		Utils::getLogger()
-			->debug('Rendering', $this->getMeta());
+			->debug('Rendering', $this->meta);
 
 		$page_params[self::KEY_CURRENT_PAGE][self::KEY_CONTENT] = $build->getTwig()
 			->render('_convert_twig_in_content.twig', $page_params);
@@ -208,7 +205,7 @@ class ContentFile {
 	 */
 	public function getBasePageData(Build $build): array{
 		return [
-			self::KEY_META => $this->getMeta(),
+			self::KEY_META => $this->meta,
 			self::KEY_PATH => $this->getPath($build),
 		];
 	}
@@ -228,7 +225,7 @@ class ContentFile {
 	 * @return string
 	 */
 	private function getTemplate(): string{
-		return $this->getMeta()['template'] ?? 'default.twig';
+		return $this->meta['template'] ?? 'default.twig';
 	}
 
 }
