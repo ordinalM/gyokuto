@@ -3,23 +3,23 @@
 require_once 'vendor/autoload.php';
 
 // Use -o /path/to/options/file.yml for a different options file on startup
-// Use -v1 for verbose output
+// Use -v for verbose output
 
-$options = getopt('o:v:');
+$options = getopt('o:v');
 
 use Gyokuto\Build;
 use Gyokuto\Utils;
 use Monolog\Logger;
 
 try {
-  if ($options['v'] ?? false) {
-    Utils::setLogLevel(Logger::DEBUG);
-  }
-	$build = new Build($options['o'] ?? null);
-  $build->run();
-}
-catch (Throwable $e) {
-  exit(1);
+    if (isset($options['v'])) {
+        echo "Setting debug log level";
+        Utils::setLogLevel(Logger::DEBUG);
+    }
+    $build = new Build($options['o'] ?? null);
+    $build->run();
+} catch (Throwable $e) {
+    exit(1);
 }
 
 exit(0);

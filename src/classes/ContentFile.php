@@ -25,30 +25,16 @@ class ContentFile
     private const string KEY_CONFIG = 'config';
     public const string KEY_PATH = 'path';
     private const string REGEX_MARKDOWN_EXTENSION = '/\.(md|markdown)$/';
-    /**
-     * Holds the meta array for this content file, if any.
-     * @var array<string, mixed>
-     */
-    public ?array $meta = null {
-        get {
-            return $this->meta;
-        }
-    }
-    private string $filename;
-    /**
-     * Holds the raw Markdown text for this content file, if any.
-     */
-    private ?string $markdown = null;
 
     /**
+     * @param array<string, mixed>|null $meta
      * @throws Exception
      */
-    public function __construct(string $filename)
+    public function __construct(private readonly string $filename, private ?string $markdown = null, public ?array $meta = null)
     {
         if (!is_file($filename)) {
             throw new RuntimeException('Bad filename ' . $filename);
         }
-        $this->filename = $filename;
         $this->readAndSplit();
     }
 
@@ -62,7 +48,7 @@ class ContentFile
         if (!$this->isParsable()) {
             return;
         }
-        $raw = file_get_contents($this->filename);
+        $raw = Utils::getFileContentsOrThrow($this->filename);
         if (preg_match('/^---\n(.+?)\n---\n\s*(.*)\s*$/s', $raw, $matches)) {
             $this->meta = Yaml::parse($matches[1]);
             $this->markdown = $matches[2];
@@ -101,7 +87,7 @@ class ContentFile
 
     public static function filenameIsParsable(string $filename): bool
     {
-        return preg_match(self::REGEX_MARKDOWN_EXTENSION, $filename);
+        return (bool) preg_match(self::REGEX_MARKDOWN_EXTENSION, $filename);
     }
 
     private function setMetaValue(string $key, mixed $value): void

@@ -48,7 +48,7 @@ class ContentFileList
      *
      * @param Build $build
      *
-     * @return array{index: array<string, array<string, list<string>>>, pages: array<string, array{meta: string, path: string}>}
+     * @return array{index: array<string, array<string, list<string>>>, pages: array<string, array{meta: array<string, mixed>, path: string}>}
      * @throws Exception
      */
     public function compileContentMetadata(Build $build): array
@@ -98,7 +98,7 @@ class ContentFileList
         unset($v);
 
         // Sort page index by descending date
-        /** @var array<string, array<string, mixed>> $page_index */
+        /** @var array<string, array{meta: array<string, mixed>, path: string}> $page_index */
         uasort($page_index, static function ($a, $b) {
             return $b[ContentFile::KEY_META][ContentFile::KEY_META_DATE] <=> $a[ContentFile::KEY_META][ContentFile::KEY_META_DATE];
         });
@@ -130,6 +130,8 @@ class ContentFileList
     /**
      * Pops a ContentFile from one of the file type lists, or null if nothing left
      *
+     * @param ContentFile::TYPE_* $type
+     * @return ContentFile|null
      * @throws Exception
      */
     public function popType(int $type): ?ContentFile
@@ -141,7 +143,12 @@ class ContentFileList
             return null;
         }
 
-        return new ContentFile(array_pop($this->filenames[$type]));
+        $next_filename = array_pop($this->filenames[$type]);
+        if (!$next_filename) {
+            return null;
+        }
+
+        return new ContentFile($next_filename);
     }
 
     /**

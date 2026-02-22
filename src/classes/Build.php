@@ -2,7 +2,6 @@
 
 namespace Gyokuto;
 
-use Exception;
 use RuntimeException;
 use Symfony\Component\Yaml\Yaml;
 use Throwable;
@@ -25,9 +24,6 @@ class Build
     private const string TEMPLATE_DIR_USER_DEFAULT = './templates';
     private const string TEMPLATE_DIR_BUILTIN = '../templates'; // relative to this file
     private const string OPTIONS_FILE_DEFAULT = './gyokuto.yml';
-    private string $content_dir = './content';
-    private string $output_dir = './www';
-    private string $temp_dir = './.gyokuto-tmp';
     /**
      * @var array<string, mixed>
      */
@@ -36,6 +32,9 @@ class Build
             return $this->config;
         }
     }
+    private string $content_dir = './content';
+    private string $output_dir = './www';
+    private string $temp_dir = './.gyokuto-tmp';
     private Environment $twig;
     /**
      * @var array<string, mixed>
@@ -46,7 +45,7 @@ class Build
     {
         $config_file = $config_file ?? self::OPTIONS_FILE_DEFAULT;
         if (is_file($config_file)) {
-            $parsed_config = Yaml::parse(file_get_contents($config_file));
+            $parsed_config = Yaml::parse(Utils::getFileContentsOrThrow($config_file));
             if (!is_array($parsed_config)) {
                 Utils::getLogger()->error('Failed to pass config file to array from ' . $config_file, ['config_parsed' => $parsed_config]);
                 throw new RuntimeException('Could not parse config properly');
@@ -171,8 +170,11 @@ class Build
         if (!is_dir($this->temp_dir) && !mkdir($concurrentDirectory = $this->temp_dir, 0755, true) && !is_dir($concurrentDirectory)) {
             throw new RuntimeException(sprintf('Directory "%s" was not created', $concurrentDirectory));
         }
+        if (!($dir_path = realpath($this->temp_dir))) {
+            throw new RuntimeException(sprintf('Failed to realpath "%s"', $this->temp_dir));
+        }
 
-        return realpath($this->temp_dir);
+        return $dir_path;
     }
 
     /**
@@ -189,7 +191,12 @@ class Build
 
     public function getContentDir(): string
     {
-        return realpath($this->content_dir);
+        $dir = realpath($this->content_dir);
+        if ($dir === false) {
+            throw new RuntimeException(sprintf('Failed to get content directory "%s"', $this->content_dir));
+        }
+
+        return $dir;
     }
 
     /**

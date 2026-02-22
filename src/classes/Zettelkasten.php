@@ -3,8 +3,8 @@
 namespace Gyokuto;
 
 class Zettelkasten implements ContentFilePlugin {
-	private const KEYS_ZETTEL_ID = ['zid', 'id', 'zettel'];
-	private const KEY_ZETTEL_INDEX = 'zettel';
+	private const array KEYS_ZETTEL_ID = ['zid', 'id', 'zettel'];
+	private const string KEY_ZETTEL_INDEX = 'zettel';
 
 	/**
 	 * @throws GyokutoException
@@ -31,6 +31,8 @@ class Zettelkasten implements ContentFilePlugin {
 	 * @throws GyokutoException
 	 */
 	public static function getZettelIndex(Build $build): array{
+        $logger = Utils::getLogger();
+        $logger->debug('Building Zettel index');
 		$build_metadata = $build->getBuildMetadata();
 		$zettel_index = $build_metadata[ContentFileList::KEY_PAGES_BY_META][self::KEY_ZETTEL_INDEX] ?? false;
 		if ($zettel_index){
@@ -40,8 +42,7 @@ class Zettelkasten implements ContentFilePlugin {
 		$build->setBuildMetadata(array_merge_recursive($build_metadata, [
 			ContentFileList::KEY_PAGES_BY_META => [self::KEY_ZETTEL_INDEX => $zettel_index,],
 		]));
-		Utils::getLogger()
-			->debug('Zettel index built added to build metadata', $build->getBuildMetadata());
+		$logger->debug('Zettel index built added to build metadata', $build->getBuildMetadata());
 
 		return $zettel_index;
 	}
