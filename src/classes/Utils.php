@@ -74,9 +74,12 @@ class Utils
      */
     public static function findFilesRecursive(string $dir, ?callable $filter = null): array
     {
-        if (!is_dir($dir) || !($dir = realpath($dir)) || !($files = array_diff(scandir($dir), ['..', '.', '.DS_Store']))) {
+        if (!is_dir($dir) || !($dir = realpath($dir))) {
             throw new RuntimeException('Directory "' . $dir . '" is not a directory');
         }
+        $files_in_dir = scandir($dir);
+        assert($files_in_dir !== false);
+        $files = array_diff($files_in_dir, ['..', '.', '.DS_Store']);
 
         $result_files = [];
 
