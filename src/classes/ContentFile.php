@@ -87,7 +87,7 @@ class ContentFile
 
     public static function filenameIsParsable(string $filename): bool
     {
-        return (bool) preg_match(self::REGEX_MARKDOWN_EXTENSION, $filename);
+        return (bool)preg_match(self::REGEX_MARKDOWN_EXTENSION, $filename);
     }
 
     private function setMetaValue(string $key, mixed $value): void
@@ -105,8 +105,8 @@ class ContentFile
     private function getTitleFromFilename(): string
     {
         $title = basename($this->filename);
-        $title = preg_replace('/\.[^.]+$/', '', $title);
-        $title = preg_replace('/[-_]+/', ' ', $title);
+        $title = preg_replace(['/\.[^.]+$/', '/[-_]+/'], ['', ' '], $title);
+        assert(!is_null($title));
 
         return trim($title);
     }
@@ -157,9 +157,10 @@ class ContentFile
     {
         // If path metadata value is set, use that, otherwise calculate output path based on the content filename.
         if (empty($this->meta[self::KEY_PATH])) {
-            $path = preg_replace(self::REGEX_MARKDOWN_EXTENSION, '.html', $this->filename);
+            $path = preg_replace(self::REGEX_MARKDOWN_EXTENSION, '.html', $this->filename) ?? '';
             if ($strip_index) {
                 $path = preg_replace('|index\.html$|', '', $path);
+                assert(!is_null($path));
             }
             $path = str_replace($build->getContentDir(), '', $path);
         } else {
@@ -186,7 +187,7 @@ class ContentFile
 
         // Render Markdown content, using Twig content filter first
         Utils::getLogger()
-            ->debug('Rendering', $this->meta);
+            ->debug('Rendering', ['meta' => $this->meta]);
 
         $page_params[self::KEY_CURRENT_PAGE][self::KEY_CONTENT] = $build->getTwig()
             ->render('_convert_twig_in_content.twig', $page_params);
@@ -205,6 +206,10 @@ class ContentFile
      */
     public function getBasePageData(Build $build): array
     {
+        if (is_null($this->meta)) {
+            throw new RuntimeException('Meta has not been built yet');
+        }
+
         return [
             self::KEY_META => $this->meta,
             self::KEY_PATH => $this->getPath($build),
@@ -216,9 +221,10 @@ class ContentFile
      */
     private function getMarkdown(): string
     {
-        if (!$this->markdown) {
+        if (is_null($this->markdown)) {
             $this->readAndSplit();
         }
+        assert(!is_null($this->markdown));
 
         return $this->markdown;
     }
